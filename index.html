@@ -219,7 +219,91 @@ for(let i=0;i<pCount;i++){
 pGeo.setAttribute('position',new THREE.BufferAttribute(pPos,3));
 const particles=new THREE.Points(pGeo,new THREE.PointsMaterial({color:0xffffff,size:0.4,transparent:true,opacity:0.6,blending:THREE.AdditiveBlending}));
 scene.add(particles);
+// ── Wind Particles (Flower design) ────────────────────────────────────────
+const flowerParticleCount = 150;
+const flowerColors = [0xff1493, 0xff69b4, 0xffb6c1, 0xffc0cb, 0xff00ff, 0xee82ee, 0xda70d6, 0xba55d3, 0x9370db, 0xff6347, 0xffa500, 0xffd700];
 
+// Create flower petal geometry
+function createFlowerGeometry() {
+    const petals = 5;
+    const points = [];
+    
+    // Create petal shape
+    for(let p = 0; p < petals; p++) {
+        const angle = (p / petals) * Math.PI * 2;
+        const x = Math.cos(angle) * 0.3;
+        const z = Math.sin(angle) * 0.3;
+        const y = 0;
+        
+        // Petal curve
+        points.push(new THREE.Vector3(x * 0.5, y - 0.2, z * 0.5));
+        points.push(new THREE.Vector3(x * 0.8, y, z * 0.8));
+        points.push(new THREE.Vector3(x * 0.5, y + 0.2, z * 0.5));
+        
+        // Center
+        points.push(new THREE.Vector3(0, y - 0.1, 0));
+    }
+    
+    return points;
+}
+
+const flowerGeo = new THREE.BufferGeometry();
+const flowerPetalPoints = createFlowerGeometry();
+let flowerInstanceData = [];
+
+for(let i = 0; i < flowerParticleCount; i++) {
+    flowerInstanceData.push({
+        position: new THREE.Vector3(0, 0, 0),
+        velocity: new THREE.Vector3(0, 0, 0),
+        life: 2.0,
+        maxLife: 1.0,
+        color: flowerColors[Math.floor(Math.random() * flowerColors.length)],
+        rotation: Math.random() * Math.PI * 2
+    });
+}
+
+// Create flower particles using individual meshes in a group
+const flowerGroup = new THREE.Group();
+scene.add(flowerGroup);
+
+const flowerMeshes = [];
+for(let i = 0; i < flowerParticleCount; i++) {
+    const flowerGeoInstance = new THREE.IcosahedronGeometry(0.15, 2);
+    const colorHex = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+    const flowerMat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        transparent: true,
+        opacity: 0.8,
+        emissive: colorHex,
+        emissiveIntensity: 0.5,
+        roughness: 0.4
+    });
+    const flowerMesh = new THREE.Mesh(flowerGeoInstance, flowerMat);
+    flowerMesh.visible = false;
+    flowerGroup.add(flowerMesh);
+    flowerMeshes.push({
+        mesh: flowerMesh,
+        life: 2.0,
+        maxLife: 1.0,
+        velocity: new THREE.Vector3(0, 0, 0),
+        colorIntensity: 1.0
+    });
+}
+
+let flowerParticleIndex = 0;
+function spawnFlowerParticle(pos, vel, life = 1.0) {
+    const idx = flowerParticleIndex % flowerParticleCount;
+    const flower = flowerMeshes[idx];
+    
+    flower.mesh.position.copy(pos);
+    flower.mesh.visible = true;
+    flower.velocity.copy(vel);
+    flower.life = 0;
+    flower.maxLife = life;
+    flower.mesh.scale.setScalar(1);
+    
+    flowerParticleIndex++;
+}
 // ── Pinwheel Configuration ────────────────────────────────────────────────────
 const pinwheelCount = 400;
 const pinwheelColors = [0xff4081, 0xffeb3b, 0x4caf50, 0x2196f3];
@@ -681,7 +765,27 @@ function animate(){
     if(keys['a'])gDir.x-=1; if(keys['d'])gDir.x+=1;
     gDir.normalize();
     const gMoving=gDir.lengthSq()>0;
-
+    // Spawn flower particles when moving
+    if(gMoving) {
+        const moveVel = gDir.clone().multiplyScalar(SPEED);
+        
+        for(let p = 0; p < 2; p++) {
+            const randomVel = new THREE.Vector3(
+                (Math.random() - 0.5) * 8,
+                (Math.random() - 0.5) * 4 + 2,
+                (Math.random() - 0.5) * 8
+            );
+            const spawnPos = ghostGroup.position.clone().add(
+                new THREE.Vector3(
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2
+                )
+            );
+            const finalVel = moveVel.clone().multiplyScalar(0.2).add(randomVel);
+            spawnFlowerParticle(spawnPos, finalVel, 1.0 + Math.random() * 0.5);
+        }
+    }
     const dist=ghostGroup.position.distanceTo(duckGroup.position);
     isHugging = dist<5.0 && !gMoving;
 
@@ -802,6 +906,36 @@ function animate(){
         if(pa[i*3+2]>50)pa[i*3+2]=-50; if(pa[i*3+2]<-50)pa[i*3+2]=50;
     }
     particles.geometry.attributes.position.needsUpdate=true;
+
+    // ── Update Flower Particles ──────────────────────────────────────────────
+    for(let i = 0; i < flowerParticleCount; i++) {
+        const flower = flowerMeshes[i];
+        flower.life += delta / flower.maxLife;
+        
+        if(flower.life < 1.0) {
+            // Update position
+            flower.mesh.position.x += flower.velocity.x * delta;
+            flower.mesh.position.y += flower.velocity.y * delta;
+            flower.mesh.position.z += flower.velocity.z * delta;
+            
+            // Apply gravity and drag
+            flower.velocity.y -= 6 * delta;
+            flower.velocity.x *= (1 - delta * 0.4);
+            flower.velocity.z *= (1 - delta * 0.4);
+            
+            // Rotate flower
+            flower.mesh.rotation.x += delta * 2;
+            flower.mesh.rotation.y += delta * 3;
+            
+            // Fade out and shrink
+            const fadeAlpha = 1.0 - flower.life;
+            flower.mesh.material.opacity = 0.8 * fadeAlpha;
+            flower.mesh.material.emissiveIntensity = 0.5 * fadeAlpha;
+            flower.mesh.scale.setScalar(fadeAlpha);
+        } else {
+            flower.mesh.visible = false;
+        }
+    }
 
     // ── Pinwheel Animation ────────────────────────────────────────────────────
     const pwDummy = new THREE.Object3D();
