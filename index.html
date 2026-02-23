@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Ghost & Boss Duck</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; }
+        #hud {
+            display : flex;
+            position: fixed; top: 16px; left: 8%; transform: translateX(-50%);
+            border-radius: 12px; color : #A8DF65; ; font-weight: bold;
+            padding: 7px 18px; font-size: 30px; pointer-events: none;
+            backdrop-filter: blur(6px); text-align: center; line-height: 1.8;
+        }
+        #c {
+            font-size: 16px; color: #A8DF65; margin-left: 5px;
+        }
+        #jp {
+            position: fixed; top:70px; left: 8.4%; transform: translateX(-50%);
+             border: none; border-radius: 8px; color:#EDF492;
+            font-size: 12px;  z-index: 10;
+        }
+        #ce {
+            position: fixed; top: 100px;  left:3%;
+             border: none; border-radius: 8px; color:#EDF492;
+            font-size: 12px; text-align: right; z-index: 10; text-transform: uppercase;
+        }
+        #ex {
+            position: fixed; top: 112px;  left:3%;
+             border: none; border-radius: 8px; color:#EDF492;
+            font-size: 12px; text-align: left; z-index: 10; text-transform: uppercase;
+        }
+        #ceex {
+            display: block;
+        }
+        #ra {
+                position: fixed; top: 130px;  left:3%;
+                border: none; border-radius: 8px; color:#EDF492;
+                font-size: 12px; text-align: right; z-index: 10; text-transform: uppercase;
+            }
+        #up {
+            position: fixed; top: 200px;  left:6%; font-size:15px; color:#EDF492; z-index: 10;
+        background-color: #A8DF65 ; border-radius: 23%; width: 24px; height: 24px; line-height: 24px; text-align: center;
+        }
+        #arb {
+            position: fixed; top: 230px;  left:3.3%; font-size:20px;
+            display: flex; gap:15px;
+        }
+        #left, #down, #right {
+            color:#EDF492; background-color: #A8DF65 ; border-radius: 23%; width: 24px; height: 24px;
+             line-height: 24px; text-align: center;font-size: 15px;
+        }
+        #con {
+            color:#EDF492; font-size: 11px; text-align: center; z-index: 10; text-transform: uppercase; font-weight: bold;
+            margin-top:11px;}
+        #brb
+        {
+            position: fixed; top: 300px;  left:4.3%; font-size:20px;
+            display: flex; gap:15px;
+        }
+        
+        #sp {
+            font-size:20px;
+            color:#EDF492; background-color: #A8DF65 ; border-radius: 8px; width: 60px; height: 24px; 
+             line-height: 24px; text-align: center;font-size: 11px; padding-right: 5px ; padding-left: 5px;
+        }
+        #jump{
+             color:#EDF492; font-size: 11px; text-align: center; z-index: 10; text-transform: uppercase; font-weight: bold;
+            margin-top:11px;  margin-left: 20px;
+        }
+        #bw {
+            position: fixed; bottom: 15px; right: 16px; padding: 10px 14px;
+            background: #A8DF65; border: none; border-radius: 8px;
+            font-size: 14px; cursor: pointer; z-index: 10;
+            
+        }
+    </style>
+    <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.183.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.183.0/examples/jsm/"}}</script>
+</head>
+<body>
+<audio id="bgMusic" autoplay loop>
+    <source src="hehe.mp3" type="audio/mpeg">
+</audio>
+<div id="canvas-container"></div>
+<div>
+    <div id="hud">J <div id="c">©</div> <div>GROUP</div> </div>
+<div id="jp">
+富士山から風が吹いてきます</div>
+
+    <div id="ce"> creative development </div>
+   
+    <div id="ex">& experience designer</div>
+    <div id="ra">RAISED ON '90s CLASSIC</div>
+    <div id="up">▲</div>
+    <div id="arb">
+        <div id="left">◀</div>
+        <div id="down">▼</div>
+        <div id="right">▶</div>
+        <div id="con">CONTROL</div>
+    </div>
+    <div id="brb">
+        <div id="sp">SPACE</div>
+        <div id="jump">JUMP</div>
+
+    </div>
+</div>
+<button id="bw" >|||</button>
+<script type="module">
+import * as THREE from 'three';
+const AudioContext = window.AudioContext || window.webkitAudioContext; 
+const defultScale = new THREE.Vector3(1, 1, 1);
+const targetScale = new THREE.Vector3(1, 1, 1);
+
+const bgMusic = document.getElementById('bgMusic');
+bgMusic.volume = 0.3;
+bgMusic.play().catch(e => console.log('Autoplay blocked, will play on interaction'));
+
+// Initialize AudioContext once at startup
+let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+// Don't resume here - let it be suspended until first sound plays
+
+const bwButton = document.getElementById('bw');
+let isMusicPlaying = true;
+bwButton.addEventListener('click', () => {  
+    if (isMusicPlaying) {
+        bgMusic.pause();
+        bwButton.textContent = '▶';
+        isMusicPlaying = false;
+    } else {
+        bgMusic.play();
+        bwButton.textContent = '||';
+        isMusicPlaying = true;
+    }
+    bwButton.blur();
+});
+
+function initAudio() {
+    // Already initialized at startup - this now does nothing
+}
+function playJumpSound(){
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(
+        800,
+        audioCtx.currentTime + 0.15
+    );
+    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.15);
+}
+function playDuckWalkSound(){
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(
+        800,
+        audioCtx.currentTime + 0.08
+    );
+    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.15);
+}
+// ── Scene ─────────────────────────────────────────────────────────────────────
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0xffb6c1, 0.013);
+
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+container.appendChild(renderer.domElement);
+
+// ── Sky ───────────────────────────────────────────────────────────────────────
+scene.add(new THREE.Mesh(
+    new THREE.SphereGeometry(500,32,15),
+    new THREE.ShaderMaterial({
+        uniforms:{ topColor:{value:new THREE.Color(0xff99cc)}, bottomColor:{value:new THREE.Color(0xffe6f2)}, offset:{value:33}, exponent:{value:0.6} },
+        vertexShader:`varying vec3 vW; void main(){ vW=(modelMatrix*vec4(position,1.)).xyz; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+        fragmentShader:`uniform vec3 topColor,bottomColor; uniform float offset,exponent; varying vec3 vW;
+        void main(){ float h=normalize(vW+offset).y; gl_FragColor=vec4(mix(bottomColor,topColor,max(pow(max(h,0.),exponent),0.)),1.); }`,
+        side:THREE.BackSide
+    })
+));
+
+// ── Terrain ───────────────────────────────────────────────────────────────────
+const floorGeo = new THREE.PlaneGeometry(200,200,64,64);
+const floor = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({color:0xff66b2,roughness:0.7,metalness:0.1,flatShading:true}));
+floor.rotation.x = -Math.PI/2;
+floor.receiveShadow = true;
+scene.add(floor);
+function getTerrainY(x,z,t){ return Math.sin(x*0.2+t)*Math.cos(z*0.2+t)*1.5; }
+
+// ── Particles ─────────────────────────────────────────────────────────────────
+const pCount=300, pGeo=new THREE.BufferGeometry(), pPos=new Float32Array(pCount*3), pVel=[];
+for(let i=0;i<pCount;i++){
+    pPos[i*3]=(Math.random()-.5)*100; pPos[i*3+1]=Math.random()*20; pPos[i*3+2]=(Math.random()-.5)*100;
+    pVel.push({x:(Math.random()-.5)*.02,y:(Math.random()-.5)*.02,z:(Math.random()-.5)*.02});
+}
+pGeo.setAttribute('position',new THREE.BufferAttribute(pPos,3));
+const particles=new THREE.Points(pGeo,new THREE.PointsMaterial({color:0xffffff,size:0.4,transparent:true,opacity:0.6,blending:THREE.AdditiveBlending}));
+scene.add(particles);
+
+// ── Pinwheel Configuration ────────────────────────────────────────────────────
+const pinwheelCount = 400;
+const pinwheelColors = [0xff4081, 0xffeb3b, 0x4caf50, 0x2196f3];
+
+// Custom curved blade geometry
+const bladeGeo = new THREE.PlaneGeometry(0.6, 0.6, 4, 4);
+bladeGeo.translate(0.3, 0.3, 0);
+const bladePos = bladeGeo.attributes.position;
+for(let i = 0; i < bladePos.count; i++) {
+    let x = bladePos.getX(i);
+    let y = bladePos.getY(i);
+    let z = (x * y) * 0.4;
+    bladePos.setZ(i, z);
+}
+bladeGeo.computeVertexNormals();
+bladeGeo.rotateX(0.2);
+
+// Create 4 InstancedMeshes for each wing color
+const pinwheelBlades = [];
+for(let i = 0; i < 4; i++) {
+    const mat = new THREE.MeshStandardMaterial({
+        color: pinwheelColors[i],
+        side: THREE.DoubleSide,
+        roughness: 0.2,
+        metalness: 0.1
+    });
+    const mesh = new THREE.InstancedMesh(bladeGeo, mat, pinwheelCount);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+    pinwheelBlades.push(mesh);
+}
+
+// Pinwheel Hubs
+const pinwheelHubGeo = new THREE.SphereGeometry(0.08, 16, 16);
+const pinwheelHubMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+const pinwheelHubs = new THREE.InstancedMesh(pinwheelHubGeo, pinwheelHubMat, pinwheelCount);
+scene.add(pinwheelHubs);
+
+// Pinwheel Particle State Data
+const pinwheelPositions = new Float32Array(pinwheelCount * 3);
+const pinwheelPhases = new Float32Array(pinwheelCount);
+const pinwheelSpeeds = new Float32Array(pinwheelCount);
+const pinwheelSpinSpeeds = new Float32Array(pinwheelCount);
+const pinwheelOrientations = new Float32Array(pinwheelCount * 3);
+
+for(let i = 0; i < pinwheelCount; i++) {
+    // Split between left and right sides (x < -40 or x > 40)
+    const isLeft = Math.random() > 0.5;
+    pinwheelPositions[i*3] = isLeft ? (Math.random() * -20 - 40) : (Math.random() * 20 + 40);
+    pinwheelPositions[i*3+1] = Math.random() * 30 + 2;
+    pinwheelPositions[i*3+2] = (Math.random() - 0.5) * 80;
+
+    pinwheelPhases[i] = Math.random() * Math.PI * 2;
+    pinwheelSpeeds[i] = Math.random() * 0.4 + 0.1;
+    pinwheelSpinSpeeds[i] = Math.random() * 8 + 4;
+
+    pinwheelOrientations[i*3] = (Math.random() - 0.5) * Math.PI * 0.5;
+    pinwheelOrientations[i*3+1] = Math.random() * Math.PI * 2;
+    pinwheelOrientations[i*3+2] = (Math.random() - 0.5) * Math.PI * 0.5;
+}
+
+// Ambient Dust for pinwheel area
+const pinwheelDustGeo = new THREE.BufferGeometry();
+const pinwheelDustPos = new Float32Array(1000 * 3);
+for(let i = 0; i < 3000; i++) {
+    pinwheelDustPos[i] = (Math.random() - 0.5) * 100;
+}
+pinwheelDustGeo.setAttribute('position', new THREE.BufferAttribute(pinwheelDustPos, 3));
+const pinwheelDustMat = new THREE.PointsMaterial({ 
+    color: 0xffffff, 
+    size: 0.15, 
+    transparent: true, 
+    opacity: 0.6 
+});
+const pinwheelDust = new THREE.Points(pinwheelDustGeo, pinwheelDustMat);
+scene.add(pinwheelDust);
+
+// ── Lights ────────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffccff,1.0));
+const dirLight=new THREE.DirectionalLight(0xffffff,1.2);
+dirLight.position.set(10,20,10); dirLight.castShadow=true;
+dirLight.shadow.mapSize.width=dirLight.shadow.mapSize.height=2048;
+dirLight.shadow.camera.left=-20;dirLight.shadow.camera.right=20;
+dirLight.shadow.camera.top=20;dirLight.shadow.camera.bottom=-20;
+scene.add(dirLight);
+const pinkLight=new THREE.PointLight(0xff66b2,2,20);
+const blueLight=new THREE.PointLight(0x66b2ff,2,20);
+scene.add(pinkLight,blueLight);
+
+// ── Materials ─────────────────────────────────────────────────────────────────
+const ghostMat=new THREE.MeshStandardMaterial({color:0xFDC3A1,roughness:0.4});
+const blackMat=new THREE.MeshBasicMaterial({color:0x111111});
+
+const blushMat=new THREE.MeshBasicMaterial({color:0xff6699,transparent:true,opacity:0.5});
+const suitMat=new THREE.MeshStandardMaterial({color:0x000000,roughness:0.7});
+const whiteMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.5});
+const yellowMat=new THREE.MeshStandardMaterial({color:0xFFD700,roughness:0.4,metalness:0.2});
+const beakMat=new THREE.MeshStandardMaterial({color:0xff8800});
+const vestMat=new THREE.MeshStandardMaterial({color:0x000000,roughness:0.7,metalness:0.2});
+const sunglassMat=new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.1,metalness:0.8});
+const goldMat=new THREE.MeshStandardMaterial({color:0xFFD700,roughness:0.3,metalness:0.9});
+const matShirt=new THREE.MeshStandardMaterial({color:0xFFD150,roughness:0.5});
+const matTie=new THREE.MeshStandardMaterial({color:0xF8843F,roughness:0.6});
+const matFeather=new THREE.MeshStandardMaterial({color:0xFFD700,roughness:0.4,metalness:0.1});
+const matBlack=new THREE.MeshBasicMaterial({color:0x111111});
+
+// ── GHOST ─────────────────────────────────────────────────────────────────────
+const ghostGroup=new THREE.Group();
+scene.add(ghostGroup);
+
+const bodyGeo=new THREE.CapsuleGeometry(1.2,2,20,20);
+{
+    const pos=bodyGeo.attributes.position, v=new THREE.Vector3();
+    for(let i=0;i<pos.count;i++){
+        v.fromBufferAttribute(pos,i);
+        if(v.y<-0.1){
+            const a=Math.atan2(v.z,v.x), r=Math.sqrt(v.x*v.x+v.z*v.z);
+            v.y+=Math.sin(a*6)*0.9*(1-r/1.2); pos.setXYZ(i,v.x,v.y,v.z);
+        }
+    }
+    pos.needsUpdate=true; bodyGeo.computeVertexNormals();
+}
+bodyGeo.computeBoundingBox();
+const bottomOffset=-bodyGeo.boundingBox.min.y;
+
+const ghostBody=new THREE.Mesh(bodyGeo,ghostMat);
+ghostBody.castShadow=true; ghostGroup.add(ghostBody);
+
+const armGeo=new THREE.CapsuleGeometry(0.25,0.8,16,16);
+const leftArm=new THREE.Mesh(armGeo,ghostMat);
+leftArm.position.set(-1.3,0.2,0.5); leftArm.rotation.set(Math.PI/4,0,-Math.PI/6); leftArm.castShadow=true; ghostBody.add(leftArm);
+const rightArm=new THREE.Mesh(armGeo,ghostMat);
+rightArm.position.set(1.3,0.2,0.5); rightArm.rotation.set(Math.PI/4,0,Math.PI/6); rightArm.castShadow=true; ghostBody.add(rightArm);
+
+const faceGroup=new THREE.Group();
+faceGroup.position.set(0,0.5,1.15); ghostBody.add(faceGroup);
+const eyeGeo=new THREE.CapsuleGeometry(0.1,0.15,16,16);
+const leftEye=new THREE.Mesh(eyeGeo,blackMat); leftEye.position.set(-0.4,0.2,0); leftEye.rotation.z=Math.PI/2; faceGroup.add(leftEye);
+const rightEye=new THREE.Mesh(eyeGeo,blackMat); rightEye.position.set(0.4,0.2,0); rightEye.rotation.z=Math.PI/2; faceGroup.add(rightEye);
+const blushGeo=new THREE.CircleGeometry(0.2,32);
+const lb=new THREE.Mesh(blushGeo,blushMat); lb.position.set(-0.6,-0.1,0.05); lb.rotation.y=-0.2; faceGroup.add(lb);
+const rb2=new THREE.Mesh(blushGeo,blushMat); rb2.position.set(0.6,-0.1,0.05); rb2.rotation.y=0.2; faceGroup.add(rb2);
+const mouthGeo=new THREE.TorusGeometry(0.15,0.04,16,32,Math.PI);
+const mouth=new THREE.Mesh(mouthGeo,blackMat); mouth.position.set(0,-0.1,0.05); mouth.rotation.x=Math.PI; faceGroup.add(mouth);
+const tearGeo=new THREE.SphereGeometry(0.08,16,16);
+const tearMat=new THREE.MeshStandardMaterial({color:0x66ccff,transparent:true,opacity:0.8});
+const tears=[];
+for(let i=0;i<4;i++){ const t=new THREE.Mesh(tearGeo,tearMat); t.visible=false; faceGroup.add(t); tears.push({mesh:t,yOffset:0,isLeft:i%2===0}); }
+
+let currentExpression='neutral';
+function setExpression(exp){
+    currentExpression=exp;
+    leftEye.rotation.z=Math.PI/2; rightEye.rotation.z=Math.PI/2;
+    leftEye.scale.set(1,1,1); rightEye.scale.set(1,1,1);
+    mouth.rotation.set(Math.PI,0,0); mouth.position.y=-0.1;
+    tears.forEach(t=>t.mesh.visible=false);
+    if(exp==='sad'){leftEye.rotation.z-=0.2;rightEye.rotation.z+=0.2;mouth.rotation.x=0;mouth.position.y=-0.2;}
+    else if(exp==='smile'){leftEye.scale.x=0.2;rightEye.scale.x=0.2;}
+    else if(exp==='crying'){leftEye.rotation.z-=0.3;rightEye.rotation.z+=0.3;mouth.rotation.x=0;mouth.position.y=-0.2;tears.forEach(t=>{t.mesh.visible=true;t.yOffset=Math.random()*0.5;});}
+}
+
+// ── BOSS DUCK ─────────────────────────────────────────────────────────────────
+const duckGroup=new THREE.Group();
+duckGroup.position.set(5,0,5);
+scene.add(duckGroup);
+
+const bodyGroup = new THREE.Group();
+duckGroup.add(bodyGroup);
+const legsGroup = new THREE.Group();
+legsGroup.position.set(0, 0, 0);
+duckGroup.add(legsGroup);
+
+// --- Suit Body ---
+const duckBodyGeo = new THREE.CapsuleGeometry(0.52, 0.8, 10, 10);
+const bodyMesh = new THREE.Mesh(duckBodyGeo, suitMat);
+bodyMesh.rotation.z = Math.PI / 2;
+bodyMesh.rotation.x = Math.PI / 2;
+bodyMesh.position.y = 1.6;
+bodyMesh.castShadow = true;
+bodyGroup.add(bodyMesh);
+
+// Tail part of suit
+const duckTailGeo = new THREE.ConeGeometry(0.4, 0.8, 14);
+const tailMesh = new THREE.Mesh(duckTailGeo, suitMat);
+tailMesh.rotation.x = -Math.PI / 2;
+tailMesh.position.set(0, 1.6, -0.8);
+tailMesh.castShadow = true;
+bodyGroup.add(tailMesh);
+
+// Black Vest over suit
+const duckVestGeo = new THREE.BoxGeometry(0.50, 1, 0.3);
+const duckVestMesh = new THREE.Mesh(duckVestGeo, vestMat);
+duckVestMesh.position.set(0, 1.5, 0.5);
+duckVestMesh.castShadow = true;
+bodyGroup.add(duckVestMesh);
+
+// --- Shirt & Tie ---
+const duckShirtGeo = new THREE.PlaneGeometry(0.02, 0.02 );
+const shirtMesh = new THREE.Mesh(duckShirtGeo, matShirt);
+shirtMesh.position.set(0, 1.7, 0.65);
+shirtMesh.rotation.x = -Math.PI / 6;
+bodyGroup.add(shirtMesh);
+
+// Collar
+const duckCollarGeo = new THREE.CylinderGeometry(0.2, 0.4, 0.2, 16);
+const collarMesh = new THREE.Mesh(duckCollarGeo, matShirt);
+collarMesh.position.set(0, 2.05 , 0.5);
+collarMesh.rotation.x = Math.PI / 8;
+bodyGroup.add(collarMesh);
+
+// Tie
+const duckTieGeo = new THREE.BoxGeometry(0.15, 0.7, 0.05);
+const tieMesh = new THREE.Mesh(duckTieGeo, matTie);
+tieMesh.position.set(0, 1.5, 0.7);
+tieMesh.rotation.x = -Math.PI / 8;
+bodyGroup.add(tieMesh);
+
+// --- Neck & Head ---
+const neckGroup = new THREE.Group();
+neckGroup.position.set(0, 2.0, 0.4);
+bodyGroup.add(neckGroup);
+
+const duckNeckGeo = new THREE.CylinderGeometry(0.15, 0.25, 1.2, 16);
+const neckMesh = new THREE.Mesh(duckNeckGeo, matFeather);
+neckMesh.position.set(0, 0.5, 0.2);
+neckMesh.rotation.x = Math.PI / 12;
+neckMesh.castShadow = true;
+neckGroup.add(neckMesh);
+
+const duckHeadGeo = new THREE.SphereGeometry(0.35, 16, 16);
+const headMesh = new THREE.Mesh(duckHeadGeo, matFeather);
+headMesh.position.set(0, 1.1, 0.3);
+headMesh.castShadow = true;
+neckGroup.add(headMesh);
+
+// Beak
+const duckBeakHeadGeo = new THREE.BoxGeometry(0.2, 0.15, 0.5);
+const beakHeadPos = duckBeakHeadGeo.attributes.position;
+for(let i=0; i<beakHeadPos.count; i++) {
+    if(beakHeadPos.getZ(i) > 0) {
+        beakHeadPos.setX(i, beakHeadPos.getX(i) * 0.5);
+        beakHeadPos.setY(i, beakHeadPos.getY(i) * 0.5);
+    }
+}
+duckBeakHeadGeo.computeVertexNormals();
+const beakHeadMesh = new THREE.Mesh(duckBeakHeadGeo, beakMat);
+beakHeadMesh.position.set(0, 1.1, 0.65);
+beakHeadMesh.castShadow = true;
+neckGroup.add(beakHeadMesh);
+
+// --- Pixel Sunglasses ("Deal With It" style) ---
+const glassesGroup = new THREE.Group();
+const pixelSize = 0.04;
+const duckPixelGeo = new THREE.BoxGeometry(pixelSize, pixelSize, pixelSize);
+
+const lensPattern = [
+    [1,1,1,1,1],
+    [1,1,1,1,1],
+    [0,1,1,1,0]
+];
+
+const buildLens = (offsetX) => {
+    for(let y=0; y<lensPattern.length; y++) {
+        for(let x=0; x<lensPattern[y].length; x++) {
+            if(lensPattern[y][x] === 1) {
+                const p = new THREE.Mesh(duckPixelGeo, matBlack);
+                p.position.set(
+                    offsetX + (x * pixelSize) - (lensPattern[0].length * pixelSize / 2),
+                    -y * pixelSize,
+                    0
+                );
+                glassesGroup.add(p);
+            }
+        }
+    }
+};
+
+buildLens(-0.15);
+buildLens(0.15);
+
+const duckBridgeGlasses = new THREE.Mesh(new THREE.BoxGeometry(0.1, pixelSize, pixelSize), matBlack);
+glassesGroup.add(duckBridgeGlasses);
+
+const duckArmGeoGlasses = new THREE.BoxGeometry(pixelSize*0.7, pixelSize*0.7, 0.3);
+const duckLeftArmGlasses = new THREE.Mesh(duckArmGeoGlasses, matBlack);
+duckLeftArmGlasses.position.set(-0.25, 0, -0.15);
+glassesGroup.add(duckLeftArmGlasses);
+const duckRightArmGlasses = new THREE.Mesh(duckArmGeoGlasses, matBlack);
+duckRightArmGlasses.position.set(0.25, 0, -0.15);
+glassesGroup.add(duckRightArmGlasses);
+
+glassesGroup.position.set(0, 1.30, 0.8);
+glassesGroup.rotation.x = Math.PI / 16;
+neckGroup.add(glassesGroup);
+
+// --- Legs (Suit Pants) & Shoes ---
+const duckLegGeoNew = new THREE.CylinderGeometry(0.2, 0.15, 1.5, 16);
+const duckShoeGeoNew = new THREE.BoxGeometry(0.25, 0.15, 0.4);
+
+const createLeg = (xOffset) => {
+    const leg = new THREE.Group();
+    
+    const pant = new THREE.Mesh(duckLegGeoNew, suitMat);
+    pant.position.y = 0.7;
+    pant.castShadow = true;
+    leg.add(pant);
+
+    const shoe = new THREE.Mesh(duckShoeGeoNew, yellowMat);
+    shoe.position.set(0, 0.050, 0.2);
+    shoe.castShadow = true;
+    leg.add(shoe);
+
+    leg.position.set(xOffset, 0, 0);
+    return leg;
+};
+
+const leftLeg = createLeg(-0.3);
+const rightLeg = createLeg(0.3);
+legsGroup.add(leftLeg);
+legsGroup.add(rightLeg);
+
+// Store references for animation
+const neckPivot = neckGroup;
+const headGroup = neckGroup;
+
+// ── SNAKE NECK TUBE ───────────────────────────────────────────────────────────
+// Simple floating head for hugging interaction
+const floatingHead=new THREE.Group(); 
+scene.add(floatingHead); 
+floatingHead.visible=false;
+
+const fhHeadNew = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), matFeather);
+fhHeadNew.position.set(0, 1.1, 0.3);
+floatingHead.add(fhHeadNew);
+
+const fhBeakHeadGeo = new THREE.BoxGeometry(0.2, 0.15, 0.5);
+const fhBeakHeadPos = fhBeakHeadGeo.attributes.position;
+for(let i=0; i<fhBeakHeadPos.count; i++) {
+    if(fhBeakHeadPos.getZ(i) > 0) {
+        fhBeakHeadPos.setX(i, fhBeakHeadPos.getX(i) * 0.5);
+        fhBeakHeadPos.setY(i, fhBeakHeadPos.getY(i) * 0.5);
+    }
+}
+fhBeakHeadGeo.computeVertexNormals();
+const fhBeakHeadMesh = new THREE.Mesh(fhBeakHeadGeo, beakMat);
+fhBeakHeadMesh.position.set(0, 1.1, 0.65);
+floatingHead.add(fhBeakHeadMesh);
+
+const NUM_CP=7;
+const neckCP=Array.from({length:NUM_CP},()=>new THREE.Vector3());
+let tubeMesh=null;
+
+function rebuildTube(points){
+    if(tubeMesh){ scene.remove(tubeMesh); tubeMesh.geometry.dispose(); tubeMesh=null; }
+    const filtered=[];
+    for(let i=0;i<points.length;i++){
+        if(i===0||points[i].distanceTo(points[i-1])>0.05) filtered.push(points[i].clone());
+    }
+    if(filtered.length<2) return;
+    if(filtered.length===2) filtered.splice(1,0,new THREE.Vector3().lerpVectors(filtered[0],filtered[1],0.5));
+    try{
+        const curve=new THREE.CatmullRomCurve3(filtered,false,'catmullrom',0.5);
+        const geo=new THREE.TubeGeometry(curve,filtered.length*4,0.32,10,false);
+        tubeMesh=new THREE.Mesh(geo,yellowMat);
+        tubeMesh.castShadow=true;
+        scene.add(tubeMesh);
+    }catch(e){}
+}
+
+// ── Input ─────────────────────────────────────────────────────────────────────
+const keys={};
+window.addEventListener('keydown',e=>{
+    keys[e.key.toLowerCase()]=true;
+    if(e.key==='j')setExpression('sad');
+    if(e.key==='k')setExpression('smile');
+    if(e.key==='l')setExpression('crying');
+});
+window.addEventListener('keyup',e=>{
+    keys[e.key.toLowerCase()]=false;
+    if(['j','k','l'].includes(e.key.toLowerCase()))setExpression('neutral');
+});
+
+// ── Physics state ─────────────────────────────────────────────────────────────
+const ghostVel=new THREE.Vector3(), duckVel=new THREE.Vector3();
+const SPEED=15, GRAVITY=30, JUMP=15;
+let ghostCanJump=true;
+const defScale=new THREE.Vector3(1,1,1), tgtScale=new THREE.Vector3(1,1,1);
+const camOffset=new THREE.Vector3(0,6,16), camTarget=new THREE.Vector3();
+const clock=new THREE.Clock();
+let isHugging=false;
+let neckStretch=1.0;
+let lastDuckWalkTime=0;
+
+function lerpAngle(a,b,t){ let d=b-a; while(d<-Math.PI)d+=Math.PI*2; while(d>Math.PI)d-=Math.PI*2; return a+d*t; }
+
+// ── Main loop ─────────────────────────────────────────────────────────────────
+function animate(){
+    requestAnimationFrame(animate);
+    const delta=Math.min(clock.getDelta(),0.1);
+    const time=clock.getElapsedTime();
+
+    // Keep background music playing if it should be
+    if (isMusicPlaying && bgMusic.paused) {
+        bgMusic.play().catch(e => console.log('BG music play error:', e));
+    }
+
+    // Animate terrain verts
+    const posAttr=floorGeo.attributes.position;
+    for(let i=0;i<posAttr.count;i++) posAttr.setZ(i,getTerrainY(posAttr.getX(i),posAttr.getY(i),time));
+    floorGeo.computeVertexNormals(); posAttr.needsUpdate=true;
+
+    const camAngle=Math.atan2(camera.position.x-ghostGroup.position.x, camera.position.z-ghostGroup.position.z);
+
+    // ── DUCK ──────────────────────────────────────────────────────────────────
+    const dDir=new THREE.Vector3();
+    if(keys['arrowup'])   dDir.z-=1;
+    if(keys['arrowdown']) dDir.z+=1;
+    if(keys['arrowleft']) dDir.x-=1;
+    if(keys['arrowright'])dDir.x+=1;
+    dDir.normalize();
+
+    if(dDir.lengthSq()>0){
+        const mx=dDir.x*Math.cos(camAngle)+dDir.z*Math.sin(camAngle);
+        const mz=-dDir.x*Math.sin(camAngle)+dDir.z*Math.cos(camAngle);
+        duckVel.x=mx*SPEED; duckVel.z=mz*SPEED;
+        duckGroup.rotation.y=lerpAngle(duckGroup.rotation.y,Math.atan2(duckVel.x,duckVel.z),10*delta);
+        bodyGroup.rotation.z=Math.sin(time*15)*0.1;
+        leftLeg.rotation.x=Math.max(0,Math.sin(time*15))*0.3;
+        rightLeg.rotation.x=Math.max(0,Math.sin(time*15+Math.PI))*0.3;
+        if(time-lastDuckWalkTime>0.35){
+            playDuckWalkSound();
+            lastDuckWalkTime=time;
+        }
+    } else {
+        duckVel.x*=(1-10*delta); duckVel.z*=(1-10*delta);
+        bodyGroup.rotation.z=0; 
+        leftLeg.rotation.x=0;
+        rightLeg.rotation.x=0;
+    }
+    duckGroup.position.x+=duckVel.x*delta;
+    duckGroup.position.z+=duckVel.z*delta;
+
+    // Duck position on terrain
+    duckGroup.position.y=getTerrainY(duckGroup.position.x,duckGroup.position.z,time);
+
+    // Enter = neck stretch (scale only, don't move position)
+    neckStretch=THREE.MathUtils.lerp(neckStretch,keys['enter']?4.5:1.0,8*delta);
+    neckGroup.scale.y=neckStretch;
+
+    // Neck base position in world space (updated AFTER duck moves)
+    const neckBaseWorld=new THREE.Vector3();
+    bodyGroup.getWorldPosition(neckBaseWorld);
+    neckBaseWorld.y += 2.0;
+
+    // ── GHOST ─────────────────────────────────────────────────────────────────
+    const gDir=new THREE.Vector3();
+    if(keys['w'])gDir.z-=1; if(keys['s'])gDir.z+=1;
+    if(keys['a'])gDir.x-=1; if(keys['d'])gDir.x+=1;
+    gDir.normalize();
+    const gMoving=gDir.lengthSq()>0;
+
+    const dist=ghostGroup.position.distanceTo(duckGroup.position);
+    isHugging = dist<5.0 && !gMoving;
+
+    if(isHugging){
+        // Ghost stays still on ground, arms out
+        const gy=getTerrainY(ghostGroup.position.x,ghostGroup.position.z,time)+bottomOffset;
+        ghostGroup.position.y=THREE.MathUtils.lerp(ghostGroup.position.y,gy,10*delta);
+        ghostVel.set(0,0,0); ghostCanJump=true;
+        ghostBody.position.y=bottomOffset;
+        ghostBody.scale.lerp(defScale,10*delta);
+        leftArm.rotation.z=-Math.PI/2;
+        rightArm.rotation.z=Math.PI/2;
+    } else {
+        if(gMoving){
+            const mx=gDir.x*Math.cos(camAngle)+gDir.z*Math.sin(camAngle);
+            const mz=-gDir.x*Math.sin(camAngle)+gDir.z*Math.cos(camAngle);
+            ghostVel.x=mx*SPEED; ghostVel.z=mz*SPEED;
+            ghostGroup.rotation.y=lerpAngle(ghostGroup.rotation.y,Math.atan2(ghostVel.x,ghostVel.z),10*delta);
+        } else {
+            ghostVel.x*=(1-10*delta); ghostVel.z*=(1-10*delta);
+        }
+        if(keys[' ']&&ghostCanJump){ 
+            ghostVel.y=JUMP; 
+            ghostCanJump=false; 
+            tgtScale.set(0.6,1.4,0.6);
+            playJumpSound();
+        }
+        ghostVel.y-=GRAVITY*delta;
+        ghostGroup.position.addScaledVector(ghostVel,delta);
+        const fy=getTerrainY(ghostGroup.position.x,ghostGroup.position.z,time);
+        if(ghostGroup.position.y<=fy+bottomOffset){
+            ghostGroup.position.y=fy+bottomOffset;
+            ghostVel.y=0;
+            if(!ghostCanJump) tgtScale.set(1.5,0.6,1.5);
+            ghostCanJump=true;
+        }
+        ghostBody.scale.lerp(tgtScale,15*delta);
+        tgtScale.lerp(defScale,5*delta);
+
+        ghostBody.position.y=bottomOffset+(ghostCanJump?Math.sin(time*2)*0.3:0);
+        leftArm.rotation.z=-Math.PI/6+Math.sin(time*4)*0.1;
+        rightArm.rotation.z=Math.PI/6-Math.sin(time*4)*0.1;
+    }
+
+    // Tears
+    if(currentExpression==='crying'){
+        tears.forEach(t=>{
+            t.yOffset+=delta*2; if(t.yOffset>1.0)t.yOffset=0;
+            t.mesh.position.set(t.isLeft?-0.4:0.4,0.1-t.yOffset,0.1);
+            t.mesh.scale.setScalar(1.0-t.yOffset);
+        });
+    }
+
+    // ── SIMPLE HUG INTERACTION ────────────────────────────────────────────────
+    const up3=new THREE.Vector3(0,1,0);
+
+    if(isHugging){
+        // Ghost body center in world
+        const gc=ghostGroup.position.clone();
+        gc.y+=2.0; // mid-ghost height
+
+        const toGN=new THREE.Vector3().subVectors(gc,neckBaseWorld).normalize();
+        const right3=new THREE.Vector3().crossVectors(up3,toGN);
+        if(right3.lengthSq()<0.001) right3.set(1,0,0); else right3.normalize();
+        const wr=1.4;
+
+        // 7 world-space target control points forming a wrap path
+        const targets=[
+            neckBaseWorld.clone(),
+            neckBaseWorld.clone().lerp(gc,0.25).addScaledVector(up3,1.8),
+            neckBaseWorld.clone().lerp(gc,0.55).addScaledVector(up3,0.4),
+            gc.clone().addScaledVector(right3,wr),
+            gc.clone().addScaledVector(toGN,wr),
+            gc.clone().addScaledVector(right3,-wr),
+            gc.clone().addScaledVector(toGN,-wr*0.7).addScaledVector(up3,1.0)
+        ];
+
+        // Lerp each CP toward its target
+        const NECK_SPEED=10;
+        for(let i=0;i<NUM_CP;i++) neckCP[i].lerp(targets[i],NECK_SPEED*delta);
+
+        // Rebuild tube
+        rebuildTube(neckCP);
+
+        // Show floating head at end CP, oriented along last segment
+        floatingHead.visible=true;
+        neckGroup.visible=false;
+
+        floatingHead.position.copy(neckCP[NUM_CP-1]);
+        const lastDir=new THREE.Vector3().subVectors(neckCP[NUM_CP-1],neckCP[NUM_CP-2]);
+        if(lastDir.lengthSq()>0.001){
+            const mat4=new THREE.Matrix4().lookAt(new THREE.Vector3(),lastDir.normalize(),up3);
+            floatingHead.quaternion.setFromRotationMatrix(mat4);
+        }
+
+    } else {
+        // All CPs retract back to neck base
+        for(let i=0;i<NUM_CP;i++) neckCP[i].lerp(neckBaseWorld,14*delta);
+
+        floatingHead.visible=false;
+        neckGroup.visible=true;
+
+        // Show tube while retracting, hide once collapsed
+        const spread=neckCP[NUM_CP-1].distanceTo(neckBaseWorld);
+        if(spread>0.4){
+            rebuildTube(neckCP);
+        } else {
+            if(tubeMesh){ scene.remove(tubeMesh); tubeMesh.geometry.dispose(); tubeMesh=null; }
+        }
+    }
+
+    // ── Particles ─────────────────────────────────────────────────────────────
+    const pa=particles.geometry.attributes.position.array;
+    for(let i=0;i<pCount;i++){
+        pa[i*3]+=pVel[i].x; pa[i*3+1]+=pVel[i].y; pa[i*3+2]+=pVel[i].z;
+        if(pa[i*3+1]>20)pa[i*3+1]=0; if(pa[i*3+1]<0)pa[i*3+1]=20;
+        if(pa[i*3]>50)pa[i*3]=-50; if(pa[i*3]<-50)pa[i*3]=50;
+        if(pa[i*3+2]>50)pa[i*3+2]=-50; if(pa[i*3+2]<-50)pa[i*3+2]=50;
+    }
+    particles.geometry.attributes.position.needsUpdate=true;
+
+    // ── Pinwheel Animation ────────────────────────────────────────────────────
+    const pwDummy = new THREE.Object3D();
+    const pwBladeDummy = new THREE.Object3D();
+    
+    for(let i = 0; i < pinwheelCount; i++) {
+        // Calculate slow floating position
+        const x = pinwheelPositions[i*3] + Math.sin(time * 0.2 + pinwheelPhases[i]) * 2;
+        const y = pinwheelPositions[i*3+1] + Math.sin(time * pinwheelSpeeds[i] + pinwheelPhases[i]) * 1.5;
+        const z = pinwheelPositions[i*3+2] + Math.cos(time * 0.2 + pinwheelPhases[i]) * 2;
+
+        pwDummy.position.set(x, y, z);
+        pwDummy.rotation.set(pinwheelOrientations[i*3], pinwheelOrientations[i*3+1], pinwheelOrientations[i*3+2]);
+        pwDummy.updateMatrix();
+
+        // Update hub position
+        pinwheelHubs.setMatrixAt(i, pwDummy.matrix);
+
+        const spin = time * pinwheelSpinSpeeds[i];
+
+        // Update the 4 wings for this pinwheel
+        for(let j = 0; j < 4; j++) {
+            pwBladeDummy.copy(pwDummy);
+            pwBladeDummy.rotateZ(spin + (j * Math.PI / 2));
+            pwBladeDummy.updateMatrix();
+            pinwheelBlades[j].setMatrixAt(i, pwBladeDummy.matrix);
+        }
+    }
+
+    pinwheelHubs.instanceMatrix.needsUpdate = true;
+    for(let j = 0; j < 4; j++) {
+        pinwheelBlades[j].instanceMatrix.needsUpdate = true;
+    }
+
+    // ── Camera ────────────────────────────────────────────────────────────────
+    const io=camOffset.clone().applyAxisAngle(new THREE.Vector3(0,1,0),ghostGroup.rotation.y*0.1);
+    camera.position.lerp(ghostGroup.position.clone().add(io),5*delta);
+    camTarget.copy(ghostGroup.position).add(new THREE.Vector3(0,2,0));
+    camera.lookAt(camTarget);
+    pinkLight.position.set(ghostGroup.position.x-3,ghostGroup.position.y+3,ghostGroup.position.z+3);
+    blueLight.position.set(ghostGroup.position.x+3,ghostGroup.position.y+3,ghostGroup.position.z-3);
+
+    renderer.render(scene,camera);
+}
+
+window.addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+animate();
+</script>
+</body>
+</html>
