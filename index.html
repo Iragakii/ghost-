@@ -180,7 +180,7 @@ const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0xffb6c1, 0.013);
 
-const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 2000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -303,6 +303,70 @@ function spawnFlowerParticle(pos, vel, life = 1.0) {
     flower.mesh.scale.setScalar(1);
     
     flowerParticleIndex++;
+}
+
+// ── Wind Stream Particles (Straight lines) ────────────────────────────────────
+const windStreamCount = 300;
+const windStreamGeo = new THREE.BufferGeometry();
+const windStreamPos = new Float32Array(windStreamCount * 6); // 2 points per line segment
+const windStreamVel = [];
+const windStreamLife = [];
+const windStreamMaxLife = [];
+
+for(let i = 0; i < windStreamCount; i++) {
+    // Start point
+    windStreamPos[i*6] = 0;
+    windStreamPos[i*6+1] = 0;
+    windStreamPos[i*6+2] = 0;
+    // End point
+    windStreamPos[i*6+3] = 0;
+    windStreamPos[i*6+4] = 0;
+    windStreamPos[i*6+5] = 0;
+    
+    windStreamVel.push({x: 0, y: 0, z: 0, dirX: 0, dirY: 0, dirZ: 0, trailLen: 1});
+    windStreamLife.push(2.0); // Start dead
+    windStreamMaxLife.push(1);
+}
+windStreamGeo.setAttribute('position', new THREE.BufferAttribute(windStreamPos, 3));
+
+const windStreamParticles = new THREE.LineSegments(windStreamGeo, new THREE.LineBasicMaterial({
+    color: new THREE.Color(0xA82323),
+    transparent: true,
+    opacity: 1.0,
+    linewidth: 4,
+    blending: THREE.NormalBlending,
+    fog: false,
+    toneMapped: false,
+    depthWrite: true
+}));
+windStreamParticles.frustumCulled = false;
+scene.add(windStreamParticles);
+
+let windParticleIndex = 0;
+function spawnWindStream(pos, direction, speed, life = 0.6) {
+    const idx = windParticleIndex % windStreamCount;
+    const trailLen = 2.5 + Math.random() * 1.0; // Increased trail length
+    
+    windStreamPos[idx*6] = pos.x;
+    windStreamPos[idx*6+1] = pos.y;
+    windStreamPos[idx*6+2] = pos.z;
+    
+    windStreamPos[idx*6+3] = pos.x + direction.x * speed * trailLen;
+    windStreamPos[idx*6+4] = pos.y + direction.y * speed * trailLen;
+    windStreamPos[idx*6+5] = pos.z + direction.z * speed * trailLen;
+    
+    windStreamVel[idx] = {
+        x: pos.x,
+        y: pos.y,
+        z: pos.z,
+        dirX: direction.x * speed,
+        dirY: direction.y * speed,
+        dirZ: direction.z * speed,
+        trailLen: trailLen
+    };
+    windStreamLife[idx] = 0;
+    windStreamMaxLife[idx] = life;
+    windParticleIndex++;
 }
 // ── Pinwheel Configuration ────────────────────────────────────────────────────
 const pinwheelCount = 400;
@@ -689,7 +753,7 @@ window.addEventListener('keyup',e=>{
 
 // ── Physics state ─────────────────────────────────────────────────────────────
 const ghostVel=new THREE.Vector3(), duckVel=new THREE.Vector3();
-const SPEED=15, GRAVITY=30, JUMP=15;
+const SPEED=30, GRAVITY=30, JUMP=15;
 let ghostCanJump=true;
 const defScale=new THREE.Vector3(1,1,1), tgtScale=new THREE.Vector3(1,1,1);
 const camOffset=new THREE.Vector3(0,6,16), camTarget=new THREE.Vector3();
@@ -697,6 +761,7 @@ const clock=new THREE.Clock();
 let isHugging=false;
 let neckStretch=1.0;
 let lastDuckWalkTime=0;
+let lastWindStreamTime=0;
 
 function lerpAngle(a,b,t){ let d=b-a; while(d<-Math.PI)d+=Math.PI*2; while(d>Math.PI)d-=Math.PI*2; return a+d*t; }
 
@@ -765,6 +830,7 @@ function animate(){
     if(keys['a'])gDir.x-=1; if(keys['d'])gDir.x+=1;
     gDir.normalize();
     const gMoving=gDir.lengthSq()>0;
+    
     // Spawn flower particles when moving
     if(gMoving) {
         const moveVel = gDir.clone().multiplyScalar(SPEED);
@@ -804,6 +870,52 @@ function animate(){
             const mz=-gDir.x*Math.sin(camAngle)+gDir.z*Math.cos(camAngle);
             ghostVel.x=mx*SPEED; ghostVel.z=mz*SPEED;
             ghostGroup.rotation.y=lerpAngle(ghostGroup.rotation.y,Math.atan2(ghostVel.x,ghostVel.z),10*delta);
+            
+            // Spawn wind streams now using actual velocity direction
+            if(time - lastWindStreamTime > 0.2) {
+                const actualMoveDir = new THREE.Vector3(ghostVel.x, 0, ghostVel.z).normalize();
+                const rightDir = new THREE.Vector3(-actualMoveDir.z, 0, actualMoveDir.x).normalize();
+                const upDir = new THREE.Vector3(0, 1, 0);
+                const windParallelDir = actualMoveDir.clone().multiplyScalar(-1).normalize();
+                
+                // Front center wind
+                const posCenter = ghostGroup.position.clone().add(actualMoveDir.clone().multiplyScalar(5)).add(
+                    new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 0.3)
+                );
+                spawnWindStream(posCenter, windParallelDir, SPEED * 1.5, 0.1);
+                
+                // Left side wind
+                const pos1 = ghostGroup.position.clone().add(rightDir.clone().multiplyScalar(-8)).add(
+                    new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 0.3)
+                );
+                spawnWindStream(pos1, windParallelDir, SPEED * 1.5, 0.1);
+                
+                // Right side wind
+                const pos2 = ghostGroup.position.clone().add(rightDir.clone().multiplyScalar(8)).add(
+                    new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 0.3)
+                );
+                spawnWindStream(pos2, windParallelDir, SPEED * 1.5, 0.1);
+                
+                // Top wind
+                const pos3 = ghostGroup.position.clone().add(upDir.clone().multiplyScalar(7)).add(
+                    new THREE.Vector3((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.5)
+                );
+                spawnWindStream(pos3, windParallelDir, SPEED * 1.5, 0.1);
+                
+                // Top-left wind
+                const pos4 = ghostGroup.position.clone().add(upDir.clone().multiplyScalar(7)).add(rightDir.clone().multiplyScalar(-6)).add(
+                    new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3)
+                );
+                spawnWindStream(pos4, windParallelDir, SPEED * 1.5, 0.1);
+                
+                // Top-right wind
+                const pos5 = ghostGroup.position.clone().add(upDir.clone().multiplyScalar(7)).add(rightDir.clone().multiplyScalar(6)).add(
+                    new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3)
+                );
+                spawnWindStream(pos5, windParallelDir, SPEED * 1.5, 0.1);
+                
+                lastWindStreamTime = time;
+            }
         } else {
             ghostVel.x*=(1-10*delta); ghostVel.z*=(1-10*delta);
         }
@@ -936,6 +1048,36 @@ function animate(){
             flower.mesh.visible = false;
         }
     }
+
+    // ── Update Wind Stream Particles ──────────────────────────────────────────
+    for(let i = 0; i < windStreamCount; i++) {
+        windStreamLife[i] += delta / windStreamMaxLife[i];
+        
+        if(windStreamLife[i] < 1.0) {
+            // Start point moves along direction
+            const moveX = windStreamVel[i].dirX * delta * 12;
+            const moveY = windStreamVel[i].dirY * delta * 12;
+            const moveZ = windStreamVel[i].dirZ * delta * 12;
+            
+            windStreamPos[i*6] += moveX;
+            windStreamPos[i*6+1] += moveY;
+            windStreamPos[i*6+2] += moveZ;
+            
+            // End point (maintains trail length)
+            windStreamPos[i*6+3] = windStreamPos[i*6] + windStreamVel[i].dirX * windStreamVel[i].trailLen * 0.15;
+            windStreamPos[i*6+4] = windStreamPos[i*6+1] + windStreamVel[i].dirY * windStreamVel[i].trailLen * 0.15;
+            windStreamPos[i*6+5] = windStreamPos[i*6+2] + windStreamVel[i].dirZ * windStreamVel[i].trailLen * 0.15;
+        } else {
+            // Hide dead particles by collapsing to same point
+            windStreamPos[i*6] = 0;
+            windStreamPos[i*6+1] = 0;
+            windStreamPos[i*6+2] = 0;
+            windStreamPos[i*6+3] = 0;
+            windStreamPos[i*6+4] = 0;
+            windStreamPos[i*6+5] = 0;
+        }
+    }
+    windStreamParticles.geometry.attributes.position.needsUpdate = true;
 
     // ── Pinwheel Animation ────────────────────────────────────────────────────
     const pwDummy = new THREE.Object3D();
