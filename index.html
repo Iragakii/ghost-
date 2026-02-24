@@ -109,6 +109,7 @@
 <button id="bw" >|||</button>
 <script type="module">
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const AudioContext = window.AudioContext || window.webkitAudioContext; 
 const defultScale = new THREE.Vector3(1, 1, 1);
 const targetScale = new THREE.Vector3(1, 1, 1);
@@ -508,6 +509,23 @@ faceGroup.position.set(0,0.5,1.15); ghostBody.add(faceGroup);
 const eyeGeo=new THREE.CapsuleGeometry(0.1,0.15,16,16);
 const leftEye=new THREE.Mesh(eyeGeo,blackMat); leftEye.position.set(-0.4,0.2,0); leftEye.rotation.z=Math.PI/2; faceGroup.add(leftEye);
 const rightEye=new THREE.Mesh(eyeGeo,blackMat); rightEye.position.set(0.4,0.2,0); rightEye.rotation.z=Math.PI/2; faceGroup.add(rightEye);
+
+// Eyelashes for left eye
+const eyelashGeo=new THREE.BoxGeometry(0.02,0.12,0.01);
+for(let i=0;i<3;i++){
+    const lash=new THREE.Mesh(eyelashGeo,blackMat);
+    lash.position.set(-0.4-0.08+i*0.08,0.35,0.02);
+    lash.rotation.z=-0.3;
+    faceGroup.add(lash);
+}
+// Eyelashes for right eye
+for(let i=0;i<3;i++){
+    const lash=new THREE.Mesh(eyelashGeo,blackMat);
+    lash.position.set(0.4-0.08+i*0.08,0.35,0.02);
+    lash.rotation.z=-0.3;
+    faceGroup.add(lash);
+}
+
 const blushGeo=new THREE.CircleGeometry(0.2,32);
 const lb=new THREE.Mesh(blushGeo,blushMat); lb.position.set(-0.6,-0.1,0.05); lb.rotation.y=-0.2; faceGroup.add(lb);
 const rb2=new THREE.Mesh(blushGeo,blushMat); rb2.position.set(0.6,-0.1,0.05); rb2.rotation.y=0.2; faceGroup.add(rb2);
@@ -754,6 +772,7 @@ window.addEventListener('keyup',e=>{
 // ── Physics state ─────────────────────────────────────────────────────────────
 const ghostVel=new THREE.Vector3(), duckVel=new THREE.Vector3();
 const SPEED=30, GRAVITY=30, JUMP=15;
+const SPEED2 = 15; // For duck, slower than ghost
 let ghostCanJump=true;
 const defScale=new THREE.Vector3(1,1,1), tgtScale=new THREE.Vector3(1,1,1);
 const camOffset=new THREE.Vector3(0,6,16), camTarget=new THREE.Vector3();
@@ -794,7 +813,7 @@ function animate(){
     if(dDir.lengthSq()>0){
         const mx=dDir.x*Math.cos(camAngle)+dDir.z*Math.sin(camAngle);
         const mz=-dDir.x*Math.sin(camAngle)+dDir.z*Math.cos(camAngle);
-        duckVel.x=mx*SPEED; duckVel.z=mz*SPEED;
+        duckVel.x=mx*SPEED2; duckVel.z=mz*SPEED2;
         duckGroup.rotation.y=lerpAngle(duckGroup.rotation.y,Math.atan2(duckVel.x,duckVel.z),10*delta);
         bodyGroup.rotation.z=Math.sin(time*15)*0.1;
         leftLeg.rotation.x=Math.max(0,Math.sin(time*15))*0.3;
@@ -936,6 +955,10 @@ function animate(){
         }
         ghostBody.scale.lerp(tgtScale,15*delta);
         tgtScale.lerp(defScale,5*delta);
+
+        // Lean forward when moving
+        const targetLean = gMoving ? THREE.MathUtils.degToRad(20) : 0;
+        ghostBody.rotation.x = THREE.MathUtils.lerp(ghostBody.rotation.x, targetLean, 8*delta);
 
         ghostBody.position.y=bottomOffset+(ghostCanJump?Math.sin(time*2)*0.3:0);
         leftArm.rotation.z=-Math.PI/6+Math.sin(time*4)*0.1;
@@ -1122,6 +1145,88 @@ function animate(){
 
     renderer.render(scene,camera);
 }
+
+// ── Load GLTF Models with Different Colors ────────────────────────────────
+
+const gltfLoader = new GLTFLoader();
+
+// Helper function to create colored material
+function createColoredMaterial(color) {
+    return new THREE.MeshStandardMaterial({
+        color: color,
+        roughness: 0.5,
+        metalness: 0.3
+    });
+}
+
+// Helper function to load model with custom colors
+function loadModelWithColor(colorHex, position, modelName) {
+    gltfLoader.load('/e.glb', (gltf) => {
+        const modelGroup = new THREE.Group();
+        modelGroup.position.set(position.x, position.y, position.z);
+        modelGroup.scale.set(4, 4, 4);
+        
+        const bodyMaterial = createColoredMaterial(colorHex);
+        const eyeTeethMaterial = new THREE.MeshStandardMaterial({
+            color: 0xFFFFFF,
+            roughness: 0.3,
+            metalness: 0.1
+        });
+        
+        // Get all meshes from the model
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                const meshName = child.name.toLowerCase();
+                
+                // Detect what part this is
+                if (meshName.includes('eye') || meshName.includes('pupil')) {
+                    // Eyes get white
+                    clonedMesh.material = eyeTeethMaterial;
+                } else if (meshName.includes('tooth') || meshName.includes('teeth')) {
+                    // Teeth get white
+                    clonedMesh.material = eyeTeethMaterial;
+                } else if (meshName.includes('body') || meshName.includes('head') || 
+                           meshName.includes('skin') || meshName.includes('character') ||
+                           child.material && child.material.color) {
+                    // Only apply color to body-like materials
+                    if (child.material && !(meshName.includes('eye') || meshName.includes('tooth'))) {
+                        // Clone the original material and change its color
+                        const newMat = child.material.clone();
+                        newMat.color.setHex(colorHex);
+                        clonedMesh.material = newMat;
+                    }
+                }
+                
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+        
+        scene.add(modelGroup);
+    });
+}
+
+// Model 1: Green Character
+function loadGreenModel() {
+    loadModelWithColor(0xFFFF00, { x: -5, y: 2.1, z: -8 }, 'Yellow');
+}
+
+// Model 2: Yellow Character
+function loadYellowModel() {
+    loadModelWithColor(0xFFFF00, { x: 0, y: 2.1, z: -8 }, 'Yellow');
+}
+
+// Model 3: Pink Character (Default)
+function loadPinkModel() {
+    loadModelWithColor(0xFFFF00, { x: 5, y: 2.1, z: -8 }, 'Yellow');
+}
+
+// Load all three models
+loadGreenModel();
+loadYellowModel();
+loadPinkModel();
 
 window.addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
 animate();
