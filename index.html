@@ -510,21 +510,25 @@ const eyeGeo=new THREE.CapsuleGeometry(0.1,0.15,16,16);
 const leftEye=new THREE.Mesh(eyeGeo,blackMat); leftEye.position.set(-0.4,0.2,0); leftEye.rotation.z=Math.PI/2; faceGroup.add(leftEye);
 const rightEye=new THREE.Mesh(eyeGeo,blackMat); rightEye.position.set(0.4,0.2,0); rightEye.rotation.z=Math.PI/2; faceGroup.add(rightEye);
 
-// Eyelashes for left eye
-const eyelashGeo=new THREE.BoxGeometry(0.02,0.12,0.01);
-for(let i=0;i<3;i++){
-    const lash=new THREE.Mesh(eyelashGeo,blackMat);
-    lash.position.set(-0.4-0.08+i*0.08,0.35,0.02);
-    lash.rotation.z=-0.3;
-    faceGroup.add(lash);
-}
-// Eyelashes for right eye
-for(let i=0;i<3;i++){
-    const lash=new THREE.Mesh(eyelashGeo,blackMat);
-    lash.position.set(0.4-0.08+i*0.08,0.35,0.02);
-    lash.rotation.z=-0.3;
-    faceGroup.add(lash);
-}
+// Eyelashes - curved like the image (extending from top-outer edge of eyes)
+const eyelashes = [];
+// Left eye eyelash - curved, extending upward and inward
+const leftEyelashGeo = new THREE.CylinderGeometry(0.015, 0.02, 0.25, 8);
+const leftEyelash = new THREE.Mesh(leftEyelashGeo, blackMat);
+leftEyelash.position.set(-0.4, 0.4, 0.05);
+leftEyelash.rotation.set(Math.PI/2, 0, -Math.PI/6); // Curved upward and inward
+leftEyelash.scale.set(1, 1, 1.2); // Make it longer
+faceGroup.add(leftEyelash);
+eyelashes.push({mesh: leftEyelash, side: 'left'});
+
+// Right eye eyelash - curved, extending upward and inward
+const rightEyelashGeo = new THREE.CylinderGeometry(0.015, 0.02, 0.25, 8);
+const rightEyelash = new THREE.Mesh(rightEyelashGeo, blackMat);
+rightEyelash.position.set(0.4, 0.4, 0.05);
+rightEyelash.rotation.set(Math.PI/2, 0, Math.PI/6); // Curved upward and inward (mirrored)
+rightEyelash.scale.set(1, 1, 1.2); // Make it longer
+faceGroup.add(rightEyelash);
+eyelashes.push({mesh: rightEyelash, side: 'right'});
 
 const blushGeo=new THREE.CircleGeometry(0.2,32);
 const lb=new THREE.Mesh(blushGeo,blushMat); lb.position.set(-0.6,-0.1,0.05); lb.rotation.y=-0.2; faceGroup.add(lb);
@@ -543,9 +547,40 @@ function setExpression(exp){
     leftEye.scale.set(1,1,1); rightEye.scale.set(1,1,1);
     mouth.rotation.set(Math.PI,0,0); mouth.position.y=-0.1;
     tears.forEach(t=>t.mesh.visible=false);
-    if(exp==='sad'){leftEye.rotation.z-=0.2;rightEye.rotation.z+=0.2;mouth.rotation.x=0;mouth.position.y=-0.2;}
-    else if(exp==='smile'){leftEye.scale.x=0.2;rightEye.scale.x=0.2;}
-    else if(exp==='crying'){leftEye.rotation.z-=0.3;rightEye.rotation.z+=0.3;mouth.rotation.x=0;mouth.position.y=-0.2;tears.forEach(t=>{t.mesh.visible=true;t.yOffset=Math.random()*0.5;});}
+    
+    // Animate eyelashes based on emotion
+    if(exp==='sad'){
+        leftEye.rotation.z-=0.2;rightEye.rotation.z+=0.2;mouth.rotation.x=0;mouth.position.y=-0.2;
+        // Eyelashes droop down more (sad)
+        leftEyelash.rotation.set(Math.PI/2 + 0.3, 0, -Math.PI/6 - 0.2);
+        rightEyelash.rotation.set(Math.PI/2 + 0.3, 0, Math.PI/6 + 0.2);
+        leftEyelash.position.y = 0.35;
+        rightEyelash.position.y = 0.35;
+    }
+    else if(exp==='smile'){
+        leftEye.scale.x=0.2;rightEye.scale.x=0.2;
+        // Eyelashes curve up more (happy)
+        leftEyelash.rotation.set(Math.PI/2 - 0.2, 0, -Math.PI/6);
+        rightEyelash.rotation.set(Math.PI/2 - 0.2, 0, Math.PI/6);
+        leftEyelash.position.y = 0.45;
+        rightEyelash.position.y = 0.45;
+    }
+    else if(exp==='crying'){
+        leftEye.rotation.z-=0.3;rightEye.rotation.z+=0.3;mouth.rotation.x=0;mouth.position.y=-0.2;
+        tears.forEach(t=>{t.mesh.visible=true;t.yOffset=Math.random()*0.5;});
+        // Eyelashes droop down even more (crying)
+        leftEyelash.rotation.set(Math.PI/2 + 0.4, 0, -Math.PI/6 - 0.3);
+        rightEyelash.rotation.set(Math.PI/2 + 0.4, 0, Math.PI/6 + 0.3);
+        leftEyelash.position.y = 0.3;
+        rightEyelash.position.y = 0.3;
+    }
+    else {
+        // Neutral - default position
+        leftEyelash.rotation.set(Math.PI/2, 0, -Math.PI/6);
+        rightEyelash.rotation.set(Math.PI/2, 0, Math.PI/6);
+        leftEyelash.position.y = 0.4;
+        rightEyelash.position.y = 0.4;
+    }
 }
 
 // ── BOSS DUCK ─────────────────────────────────────────────────────────────────
@@ -831,8 +866,8 @@ function animate(){
     duckGroup.position.x+=duckVel.x*delta;
     duckGroup.position.z+=duckVel.z*delta;
 
-    // Duck position on terrain
-    duckGroup.position.y=getTerrainY(duckGroup.position.x,duckGroup.position.z,time);
+    // Duck position on terrain - move up a little on Y axis
+    duckGroup.position.y=getTerrainY(duckGroup.position.x,duckGroup.position.z,time) + 1.2;
 
     // Enter = neck stretch (scale only, don't move position)
     neckStretch=THREE.MathUtils.lerp(neckStretch,keys['enter']?4.5:1.0,8*delta);
@@ -1158,12 +1193,12 @@ function createColoredMaterial(color) {
         metalness: 0.3
     });
 }
-
 // Helper function to load model with custom colors
 function loadModelWithColor(colorHex, position, modelName) {
     gltfLoader.load('/e.glb', (gltf) => {
         const modelGroup = new THREE.Group();
         modelGroup.position.set(position.x, position.y, position.z);
+        modelGroup.rotation.y = -Math.PI/2; // Face the screen (180 degrees)
         modelGroup.scale.set(4, 4, 4);
         
         const bodyMaterial = createColoredMaterial(colorHex);
@@ -1208,19 +1243,20 @@ function loadModelWithColor(colorHex, position, modelName) {
     });
 }
 
+
 // Model 1: Green Character
 function loadGreenModel() {
-    loadModelWithColor(0xFFFF00, { x: -5, y: 2.1, z: -8 }, 'Yellow');
+    loadModelWithColor(0xDDAED3, { x: -10, y: 2.1, z: -30 }, 'Yellow');
 }
 
 // Model 2: Yellow Character
 function loadYellowModel() {
-    loadModelWithColor(0xFFFF00, { x: 0, y: 2.1, z: -8 }, 'Yellow');
+    loadModelWithColor(0xDDAED3, { x: 0, y: 2.1, z: -30 }, 'Yellow');
 }
 
 // Model 3: Pink Character (Default)
 function loadPinkModel() {
-    loadModelWithColor(0xFFFF00, { x: 5, y: 2.1, z: -8 }, 'Yellow');
+    loadModelWithColor(0xDDAED3, { x: 10, y: 2.1, z: -30 }, 'Yellow');
 }
 
 // Load all three models
