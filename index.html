@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Ghost & Boss Duck</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
-        #canvas-container { width: 100vw; height: 100vh; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; user-select: none; }
+        #canvas-container { width: 100vw; height: 100vh; cursor: grab; }
         #hud {
             display : flex;
             position: fixed; top: 16px; left: 8%; transform: translateX(-50%);
@@ -76,6 +76,35 @@
             font-size: 14px; cursor: pointer; z-index: 10;
             
         }
+        .char-notification {
+            position: fixed;
+            background: #A8DF65;
+            color: #000;
+            
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .char-chat {
+            position: fixed;
+            background: #EDF492;
+            color: #000;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            max-width: 250px;
+            text-align: center;
+        }
     </style>
     <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.183.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.183.0/examples/jsm/"}}</script>
 </head>
@@ -107,6 +136,13 @@
     </div>
 </div>
 <button id="bw" >|||</button>
+<!-- Character Interaction Notifications -->
+<div id="char1-notif" class="char-notification">F</div>
+<div id="char1-chat" class="char-chat">Hello, U should press J K L</div>
+<div id="char2-notif" class="char-notification">F</div>
+<div id="char2-chat" class="char-chat">Hello , U should press Enter Duck </div>
+<div id="char3-notif" class="char-notification">F</div>
+<div id="char3-chat" class="char-chat">Hello</div>
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -460,7 +496,7 @@ const blueLight=new THREE.PointLight(0x66b2ff,2,20);
 scene.add(pinkLight,blueLight);
 
 // ── Materials ─────────────────────────────────────────────────────────────────
-const ghostMat=new THREE.MeshStandardMaterial({color:0xFDC3A1,roughness:0.4});
+const ghostMat=new THREE.MeshStandardMaterial({color:0xF2AEBB,roughness:0.4});
 const blackMat=new THREE.MeshBasicMaterial({color:0x111111});
 
 const blushMat=new THREE.MeshBasicMaterial({color:0xff6699,transparent:true,opacity:0.5});
@@ -793,15 +829,86 @@ function rebuildTube(points){
 
 // ── Input ─────────────────────────────────────────────────────────────────────
 const keys={};
+let closestCharIndex = -1;
+const INTERACTION_DISTANCE = 8; // Distance to trigger interaction
+
 window.addEventListener('keydown',e=>{
     keys[e.key.toLowerCase()]=true;
     if(e.key==='j')setExpression('sad');
     if(e.key==='k')setExpression('smile');
     if(e.key==='l')setExpression('crying');
+    
+    // Handle F key for character interaction
+    if(e.key.toLowerCase() === 'f' && closestCharIndex >= 0) {
+        const char = characterModels[closestCharIndex];
+        if(char && !char.isInteracting) {
+            char.isInteracting = true;
+            // Show chat bubble
+            const chatEl = document.getElementById(`char${closestCharIndex + 1}-chat`);
+            if(chatEl) {
+                chatEl.style.display = 'block';
+            }
+            // Hide notification
+            const notifEl = document.getElementById(`char${closestCharIndex + 1}-notif`);
+            if(notifEl) {
+                notifEl.style.display = 'none';
+            }
+            // Clear any existing timeout for this character
+            if(characterTimeouts[closestCharIndex]) {
+                clearTimeout(characterTimeouts[closestCharIndex]);
+            }
+            // Hide chat after 3 seconds
+            characterTimeouts[closestCharIndex] = setTimeout(() => {
+                if(chatEl) chatEl.style.display = 'none';
+                char.isInteracting = false;
+                characterTimeouts[closestCharIndex] = null;
+            }, 3000);
+        }
+    }
 });
 window.addEventListener('keyup',e=>{
     keys[e.key.toLowerCase()]=false;
     if(['j','k','l'].includes(e.key.toLowerCase()))setExpression('neutral');
+});
+
+// ── Mouse Camera Control Events ──────────────────────────────────────────────
+const canvasContainer = document.getElementById('canvas-container');
+
+window.addEventListener('mousedown', (e) => {
+    isMouseDown = true;
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    if(canvasContainer) canvasContainer.style.cursor = 'grabbing';
+    // Prevent default to avoid text selection
+    e.preventDefault();
+});
+
+window.addEventListener('mousemove', (e) => {
+    if (isMouseDown) {
+        const deltaX = e.clientX - mouseX;
+        const deltaY = e.clientY - mouseY;
+        
+        // Update camera rotation
+        cameraRotationY -= deltaX * MOUSE_SENSITIVITY;
+        cameraRotationX -= deltaY * MOUSE_SENSITIVITY;
+        
+        // Clamp vertical rotation
+        cameraRotationX = Math.max(MIN_PITCH, Math.min(MAX_PITCH, cameraRotationX));
+        
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+    }
+});
+
+window.addEventListener('mouseup', () => {
+    isMouseDown = false;
+    if(canvasContainer) canvasContainer.style.cursor = 'grab';
+});
+
+// Also handle mouse leave to stop dragging
+window.addEventListener('mouseleave', () => {
+    isMouseDown = false;
+    if(canvasContainer) canvasContainer.style.cursor = 'grab';
 });
 
 // ── Physics state ─────────────────────────────────────────────────────────────
@@ -816,6 +923,16 @@ let isHugging=false;
 let neckStretch=1.0;
 let lastDuckWalkTime=0;
 let lastWindStreamTime=0;
+
+// ── Mouse Camera Control ─────────────────────────────────────────────────────
+let isMouseDown = false;
+let mouseX = 0;
+let mouseY = 0;
+let cameraRotationY = 0; // Horizontal rotation (around Y axis)
+let cameraRotationX = 0; // Vertical rotation (pitch)
+const MOUSE_SENSITIVITY = 0.003;
+const MIN_PITCH = -Math.PI / 3; // Limit vertical rotation
+const MAX_PITCH = Math.PI / 3;
 
 function lerpAngle(a,b,t){ let d=b-a; while(d<-Math.PI)d+=Math.PI*2; while(d>Math.PI)d-=Math.PI*2; return a+d*t; }
 
@@ -996,8 +1113,26 @@ function animate(){
         ghostBody.rotation.x = THREE.MathUtils.lerp(ghostBody.rotation.x, targetLean, 8*delta);
 
         ghostBody.position.y=bottomOffset+(ghostCanJump?Math.sin(time*2)*0.3:0);
-        leftArm.rotation.z=-Math.PI/6+Math.sin(time*4)*0.1;
-        rightArm.rotation.z=Math.PI/6-Math.sin(time*4)*0.1;
+        
+        // Running arm animation - arms swing forward and backward
+        if(gMoving) {
+            const runSpeed = 8; // Faster animation when running
+            const armSwing = Math.sin(time * runSpeed) * 0.6; // Forward/backward swing amplitude
+            
+            // Left arm swings forward and backward (opposite phase to right)
+            leftArm.rotation.x = Math.PI/4 + armSwing; // Forward/backward motion
+            leftArm.rotation.z = -Math.PI/6; // Keep side angle
+            
+            // Right arm swings opposite phase (when left is forward, right is back)
+            rightArm.rotation.x = Math.PI/4 - armSwing; // Opposite phase
+            rightArm.rotation.z = Math.PI/6; // Keep side angle
+        } else {
+            // Idle animation - gentle sway
+            leftArm.rotation.x = Math.PI/4;
+            rightArm.rotation.x = Math.PI/4;
+            leftArm.rotation.z = -Math.PI/6 + Math.sin(time*2)*0.1;
+            rightArm.rotation.z = Math.PI/6 - Math.sin(time*2)*0.1;
+        }
     }
 
     // Tears
@@ -1171,12 +1306,114 @@ function animate(){
     }
 
     // ── Camera ────────────────────────────────────────────────────────────────
-    const io=camOffset.clone().applyAxisAngle(new THREE.Vector3(0,1,0),ghostGroup.rotation.y*0.1);
-    camera.position.lerp(ghostGroup.position.clone().add(io),5*delta);
+    // Apply mouse rotation to camera offset
+    const rotatedOffset = camOffset.clone();
+    
+    // Apply horizontal rotation (Y axis)
+    rotatedOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotationY);
+    
+    // Apply vertical rotation (X axis) - rotate around a perpendicular axis
+    const rightVector = new THREE.Vector3(1, 0, 0);
+    rightVector.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotationY);
+    rotatedOffset.applyAxisAngle(rightVector, cameraRotationX);
+    
+    // Also apply slight rotation based on ghost movement
+    rotatedOffset.applyAxisAngle(new THREE.Vector3(0,1,0),ghostGroup.rotation.y*0.1);
+    
+    // Position camera
+    camera.position.lerp(ghostGroup.position.clone().add(rotatedOffset),5*delta);
     camTarget.copy(ghostGroup.position).add(new THREE.Vector3(0,2,0));
     camera.lookAt(camTarget);
     pinkLight.position.set(ghostGroup.position.x-3,ghostGroup.position.y+3,ghostGroup.position.z+3);
     blueLight.position.set(ghostGroup.position.x+3,ghostGroup.position.y+3,ghostGroup.position.z-3);
+
+    // ── Character Interaction ─────────────────────────────────────────────────
+    closestCharIndex = -1;
+    let minDistance = INTERACTION_DISTANCE;
+    
+    for(let i = 0; i < characterModels.length; i++) {
+        const char = characterModels[i];
+        if(!char || !char.group) continue;
+        
+        // Get character world position
+        const charPos = new THREE.Vector3();
+        char.group.getWorldPosition(charPos);
+        
+        // Calculate distance from ghost
+        const distance = ghostGroup.position.distanceTo(charPos);
+        
+        // Get notification and chat elements
+        const notifEl = document.getElementById(`char${i + 1}-notif`);
+        const chatEl = document.getElementById(`char${i + 1}-chat`);
+        
+        // Position notification above character head (3D to 2D projection)
+        const headPos = charPos.clone();
+        headPos.y += 3; // Above head
+        
+        const screenPos = headPos.clone().project(camera);
+        const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+        
+        if(distance < INTERACTION_DISTANCE) {
+            // Character is close enough
+            if(distance < minDistance) {
+                minDistance = distance;
+                closestCharIndex = i;
+            }
+            
+            // Show notification if not interacting
+            if(!char.isInteracting && notifEl) {
+                notifEl.style.display = 'block';
+                notifEl.style.left = x + 'px';
+                notifEl.style.top = (y - 40) + 'px';
+                notifEl.style.transform = 'translateX(-50%)';
+            }
+            
+            // Position and show chat bubble if interacting
+            if(char.isInteracting && chatEl) {
+                chatEl.style.display = 'block';
+                chatEl.style.left = x + 'px';
+                chatEl.style.top = (y - 60) + 'px';
+                chatEl.style.transform = 'translateX(-50%)';
+            }
+        } else {
+            // Character is too far - hide everything and reset interaction
+            if(notifEl) notifEl.style.display = 'none';
+            if(chatEl) {
+                chatEl.style.display = 'none';
+            }
+            // Reset interaction state when player moves away
+            if(char.isInteracting) {
+                char.isInteracting = false;
+                // Clear timeout if player moves away
+                if(characterTimeouts[i]) {
+                    clearTimeout(characterTimeouts[i]);
+                    characterTimeouts[i] = null;
+                }
+            }
+        }
+    }
+    
+    // Hide notifications and chat bubbles for characters that are not closest
+    for(let i = 0; i < characterModels.length; i++) {
+        if(i !== closestCharIndex) {
+            const char = characterModels[i];
+            if(char) {
+                const notifEl = document.getElementById(`char${i + 1}-notif`);
+                const chatEl = document.getElementById(`char${i + 1}-chat`);
+                if(notifEl) notifEl.style.display = 'none';
+                if(chatEl) chatEl.style.display = 'none';
+                // Reset interaction state for non-closest characters
+                if(char.isInteracting) {
+                    char.isInteracting = false;
+                    if(characterTimeouts[i]) {
+                        clearTimeout(characterTimeouts[i]);
+                        characterTimeouts[i] = null;
+                    }
+                }
+            }
+        }
+    }
 
     renderer.render(scene,camera);
 }
@@ -1184,6 +1421,10 @@ function animate(){
 // ── Load GLTF Models with Different Colors ────────────────────────────────
 
 const gltfLoader = new GLTFLoader();
+
+// Store character model references
+const characterModels = [];
+const characterTimeouts = []; // Store timeout IDs for each character
 
 // Helper function to create colored material
 function createColoredMaterial(color) {
@@ -1194,12 +1435,12 @@ function createColoredMaterial(color) {
     });
 }
 // Helper function to load model with custom colors
-function loadModelWithColor(colorHex, position, modelName) {
+function loadModelWithColor(colorHex, position, modelName, charIndex) {
     gltfLoader.load('/e.glb', (gltf) => {
         const modelGroup = new THREE.Group();
         modelGroup.position.set(position.x, position.y, position.z);
         modelGroup.rotation.y = -Math.PI/2; // Face the screen (180 degrees)
-        modelGroup.scale.set(4, 4, 4);
+        modelGroup.scale.set(12, 12, 12);
         
         const bodyMaterial = createColoredMaterial(colorHex);
         const eyeTeethMaterial = new THREE.MeshStandardMaterial({
@@ -1240,23 +1481,29 @@ function loadModelWithColor(colorHex, position, modelName) {
         });
         
         scene.add(modelGroup);
+        // Store reference to character model
+        characterModels[charIndex] = {
+            group: modelGroup,
+            position: position,
+            isInteracting: false
+        };
     });
 }
 
 
-// Model 1: Green Character
+// Model 1: Pink Character
 function loadGreenModel() {
-    loadModelWithColor(0xDDAED3, { x: -10, y: 2.1, z: -30 }, 'Yellow');
+    loadModelWithColor(0xDDAED3, { x: -20, y: 7, z: -30 }, 'Yellow', 0);
 }
 
-// Model 2: Yellow Character
+// Model 2:  Pink Character
 function loadYellowModel() {
-    loadModelWithColor(0xDDAED3, { x: 0, y: 2.1, z: -30 }, 'Yellow');
+    loadModelWithColor(0xDDAED3, { x: 0, y:7, z: -30 }, 'Yellow', 1);
 }
 
 // Model 3: Pink Character (Default)
 function loadPinkModel() {
-    loadModelWithColor(0xDDAED3, { x: 10, y: 2.1, z: -30 }, 'Yellow');
+    loadModelWithColor(0xDDAED3, { x: 20, y: 7, z: -30 }, 'Yellow', 2);
 }
 
 // Load all three models
