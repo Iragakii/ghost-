@@ -517,7 +517,7 @@ const leftEyelashGeo = new THREE.CylinderGeometry(0.015, 0.02, 0.25, 8);
 const leftEyelash = new THREE.Mesh(leftEyelashGeo, blackMat);
 leftEyelash.position.set(-0.4, 0.4, 0.05);
 leftEyelash.rotation.set(Math.PI/2, 0, -Math.PI/6); // Curved upward and inward
-leftEyelash.scale.set(1, 1, 1.2); // Make it longer
+leftEyelash.scale.set(1.5, 1.5, 1.2); // Make it longer
 faceGroup.add(leftEyelash);
 eyelashes.push({mesh: leftEyelash, side: 'left'});
 
@@ -526,7 +526,7 @@ const rightEyelashGeo = new THREE.CylinderGeometry(0.015, 0.02, 0.25, 8);
 const rightEyelash = new THREE.Mesh(rightEyelashGeo, blackMat);
 rightEyelash.position.set(0.4, 0.4, 0.05);
 rightEyelash.rotation.set(Math.PI/2, 0, Math.PI/6); // Curved upward and inward (mirrored)
-rightEyelash.scale.set(1, 1, 1.2); // Make it longer
+rightEyelash.scale.set(1.5, 1.5, 1.2); // Make it longer
 faceGroup.add(rightEyelash);
 eyelashes.push({mesh: rightEyelash, side: 'right'});
 
