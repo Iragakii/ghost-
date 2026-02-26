@@ -1,0 +1,22 @@
+{
+  "name": "dreamland",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "compress:glb": "gltf-transform optimize"
+  },
+  "devDependencies": {
+    "@gltf-transform/cli": "^4.3.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "vite": "^7.3.1"
+  },
+  "dependencies": {
+    "three": "^0.183.0"
+  }
+}

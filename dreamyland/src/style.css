@@ -1,0 +1,259 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Old CSS Styles */
+body {
+    margin: 0;
+    overflow: hidden;
+    background: #000;
+    font-family: monospace;
+    user-select: none;
+}
+
+#canvas-container {
+    width: 100vw;
+    height: 100vh;
+    cursor: grab;
+}
+
+#canvas-container.grab-cursor {
+    cursor: grab;
+}
+
+#canvas-container.grabbing-cursor {
+    cursor: grabbing;
+}
+
+#hud {
+    display: flex;
+    position: fixed;
+    top: 16px;
+    left: 8%;
+    transform: translateX(-50%);
+    border-radius: 12px;
+    color: #A8DF65;
+    font-weight: bold;
+    padding: 7px 18px;
+    font-size: 30px;
+    pointer-events: none;
+
+    text-align: center;
+    line-height: 1.8;
+}
+
+#c {
+    font-size: 16px;
+    color: #A8DF65;
+    margin-left: 5px;
+}
+
+#jp {
+    position: fixed;
+    top: 70px;
+    left: 8.4%;
+    transform: translateX(-50%);
+    border: none;
+    border-radius: 8px;
+    color: #EDF492;
+    font-size: 12px;
+    z-index: 10;
+}
+
+#ce {
+    position: fixed;
+    top: 100px;
+    left: 3%;
+    border: none;
+    border-radius: 8px;
+    color: #EDF492;
+    font-size: 12px;
+    text-align: right;
+    z-index: 10;
+    text-transform: uppercase;
+}
+
+#ex {
+    position: fixed;
+    top: 112px;
+    left: 3%;
+    border: none;
+    border-radius: 8px;
+    color: #EDF492;
+    font-size: 12px;
+    text-align: left;
+    z-index: 10;
+    text-transform: uppercase;
+}
+
+#ceex {
+    display: block;
+}
+
+#ra {
+    position: fixed;
+    top: 130px;
+    left: 3%;
+    border: none;
+    border-radius: 8px;
+    color: #EDF492;
+    font-size: 12px;
+    text-align: right;
+    z-index: 10;
+    text-transform: uppercase;
+}
+
+#up {
+    position: fixed;
+    top: 200px;
+    left: 6%;
+    font-size: 15px;
+    color: #EDF492;
+    z-index: 10;
+    background-color: #A8DF65;
+    border-radius: 23%;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+}
+
+#arb {
+    position: fixed;
+    top: 230px;
+    left: 3.3%;
+    font-size: 20px;
+    display: flex;
+    gap: 15px;
+}
+
+#left,
+#down,
+#right {
+    color: #EDF492;
+    background-color: #A8DF65;
+    border-radius: 23%;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    font-size: 15px;
+    margin: 0;
+}
+
+#con {
+    color: #EDF492;
+    font-size: 11px;
+    text-align: center;
+    z-index: 10;
+    text-transform: uppercase;
+    font-weight: bold;
+    margin-top: 11px;
+}
+
+#brb {
+    position: fixed;
+    top: 300px;
+    left: 4.3%;
+    font-size: 20px;
+    display: flex;
+    gap: 15px;
+}
+
+#sp {
+    font-size: 20px;
+    color: #EDF492;
+    background-color: #A8DF65;
+    border-radius: 8px;
+    width: 60px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    font-size: 11px;
+    padding-right: 5px;
+    padding-left: 5px;
+}
+
+#jump {
+    color: #EDF492;
+    font-size: 11px;
+    text-align: center;
+    z-index: 10;
+    text-transform: uppercase;
+    font-weight: bold;
+    margin-top: 11px;
+    margin-left: 20px;
+}
+
+#bw {
+    position: fixed;
+    bottom: 15px;
+    right: 16px;
+    padding: 10px 14px;
+    background: #A8DF65;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.char-notification {
+    position: fixed;
+    background: #A8DF65;
+    color: #000;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 20px;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 100;
+    display: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.char-chat {
+    position: fixed;
+    background: #EDF492;
+    color: #000;
+    padding: 10px 18px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 100;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    max-width: 250px;
+    text-align: center;
+}
+
+.chars-chat {
+    position: fixed;
+    background: #262626;
+    color: #ACBFA4;
+    padding: 5px 10px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 100;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    max-width: 250px;
+    text-align: center;
+}
+
+.chars-notification {
+    position: fixed;
+    background: #262626;
+    color: #ACBFA4;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 20px;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 100;
+    display: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}

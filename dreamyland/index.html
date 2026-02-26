@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Ghost & Boss Duck</title>
+    <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+    <audio id="bgMusic" autoplay loop>
+        <source src="/hehe.mp3" type="audio/mpeg">
+    </audio>
+    <div id="canvas-container"></div>
+    <div>
+        <div id="hud">J <div id="c">©</div>
+            <div>GROUP</div>
+        </div>
+        <div id="jp">富士山から風が吹いてきます</div>
+        <div id="ce"> creative development </div>
+        <div id="ex">& experience designer</div>
+        <div id="ra">RAISED ON '90s CLASSIC</div>
+        <div id="up">▲</div>
+        <div id="arb">
+            <div id="left">◀</div>
+            <div id="down">▼</div>
+            <div id="right">▶</div>
+            <div id="con">CONTROL</div>
+        </div>
+        <div id="brb">
+            <div id="sp">SPACE</div>
+            <div id="jump">JUMP</div>
+        </div>
+    </div>
+    <button id="bw">||</button>
+    <!-- Character Interaction Notifications -->
+    <div id="char1-notif" class="char-notification">F</div>
+    <div id="char1-chat" class="char-chat">Hello, U should press J K L</div>
+    <div id="char2-notif" class="char-notification">F</div>
+    <div id="char2-chat" class="char-chat">Hello , U should press Enter Duck </div>
+    <div id="char3-notif" class="char-notification">F</div>
+    <div id="char3-chat" class="char-chat">Hello</div>
+    <div id="f-notif" class="char-notification">F</div>
+    <div id="f-chat" class="char-chat">I dont want to be at that party</div>
+    <div id="angle-notif" class="chars-notification">F</div>
+    <div id="angle-chat" class="chars-chat">Hello</div>
+    <div id="angle-q-notif" class="chars-notification">Q</div>
+    <div id="ve-notif" class="char-notification">F</div>
+    <div id="ve-chat" class="char-chat">I was try my best </div>
+    <div id="pp-notif" class="char-notification">F</div>
+    <div id="pp-chat" class="char-chat">I want can have Q to sing like her</div>
+    <div id="lm-notif" class="chars-notification">F</div>
+    <div id="lm-chat" class="chars-chat">Hello</div>
+    <div id="fat-notif" class="chars-notification">F</div>
+    <div id="fat-chat" class="chars-chat">Hello</div>
+    <div id="newchar-notif" class="chars-notification">F</div>
+    <div id="newchar-chat" class="chars-chat">You should Do my prompt better .........</div>
+    <div id="angle-song-embed-container"
+        style="display: none; position: fixed; top: 10px; right: 20px; z-index: 1000;  border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); padding: 12px; width: 300px; max-height: 150px; overflow: hidden; pointer-events: auto;">
+        <button id="angle-song-close"
+            style="position: absolute; top: 8px; right: 8px; background: #BBCB2E; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center; z-index: 1001; transition: background 0.2s; pointer-events: auto;"
+            onmouseover="this.style.background='#cc0000'" onmouseout="this.style.background='#ff4444'">×</button>
+        <iframe id="angle-song-embed" style="width: 100%; height: 100%; border: none; border-radius: 8px; pointer-events: auto;"></iframe>
+    </div>
+    
+    <!-- Custom URL Input Modal -->
+    <div id="url-input-modal" style="display: none; position: fixed; top: 60px; right: 100px; width: 200px; height: 80px;  z-index: 2000; align-items: center;">
+        <div style=" border-radius: 12px; padding: 24px; min-width: 200px; max-width: 200px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);">
+            <div style="color: #90EE90; font-size: 14px; margin-bottom: 16px;">Give me song URL I will sings for u</div>
+            <input type="text" id="url-input-field" placeholder="Enter URL here..." style="width: 100%; padding: 10px; border: 1px solid #90EE90; border-radius: 8px; background: rgba(0, 0, 0, 0.3); color: #90EE90; font-size: 14px; margin-bottom: 16px; outline: none; box-sizing: border-box;" autofocus>
+            <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                <button id="url-input-ok" style="background: #90EE90; color: #1a3a1a; border: none; border-radius: 20px; padding: 8px 20px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.2s;" onmouseover="this.style.background='#7acc7a'" onmouseout="this.style.background='#90EE90'">OK</button>
+                <button id="url-input-cancel" style="background: #1a3a1a; color: #90EE90; border-radius: 20px; padding: 5px 15px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.2s;" onmouseover="this.style.background='#2d4a2d'" onmouseout="this.style.background='#1a3a1a'">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
