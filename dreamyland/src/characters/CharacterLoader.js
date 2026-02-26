@@ -1,12 +1,45 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const dracoLoader = new DRACOLoader();
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
 
-const gltfLoader = new GLTFLoader();
+const ktx2Loader = new KTX2Loader();
+ktx2Loader.setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.183.0/examples/jsm/libs/basis/');
+
+// Create loading manager
+const loadingManager = new THREE.LoadingManager();
+
+const gltfLoader = new GLTFLoader(loadingManager);
 gltfLoader.setDRACOLoader(dracoLoader);
+
+
+// Suppress blob URL texture errors from GLTFLoader
+// These errors occur when textures are embedded in GLB files but fail to load
+// The models will still render, just without textures
+const originalError = console.error;
+const originalWarn = console.warn;
+
+console.error = function(...args) {
+    const message = args.join(' ');
+    if (message.includes("THREE.GLTFLoader: Couldn't load texture blob:")) {
+        // Suppress blob texture loading errors - textures may be optional
+        return;
+    }
+    originalError.apply(console, args);
+};
+
+console.warn = function(...args) {
+    const message = args.join(' ');
+    if (message.includes("THREE.GLTFLoader: Couldn't load texture blob:")) {
+        // Suppress blob texture loading warnings
+        return;
+    }
+    originalWarn.apply(console, args);
+};
 
 // Helper function to create colored material
 function createColoredMaterial(color) {
@@ -77,6 +110,35 @@ function loadYellowModel(scene, characterModels) {
 
 function loadPinkModel(scene, characterModels) {
     loadModelWithColor(0xDDAED3, { x: 20, y: 7, z: -150 }, 'Yellow', 2, scene, characterModels);
+}
+
+function loadGLModel(scene, characterModels) {
+    gltfLoader.load('/pinklocation/gl.glb', (gltf) => {
+        const modelGroup = new THREE.Group();
+        // Position next to pink characters (to the right of the last pink character at x: 20)
+        modelGroup.position.set(40, 19, -150);
+        modelGroup.rotation.y = -Math.PI / 2; // Same rotation as pink characters
+        modelGroup.scale.set(40, 40, 40); // Same scale as pink characters
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        // Store reference to character model (using index 16, or find an unused index)
+        characterModels[16] = {
+            group: modelGroup,
+            position: { x: 40, y: 7, z: -150 },
+            isInteracting: false
+        };
+    }, undefined, (error) => {
+        console.error('Error loading gl.glb:', error);
+    });
 }
 
 function loadFModel(scene, characterModels) {
@@ -505,6 +567,7 @@ export function loadAllCharacters(scene, characterModels, characterTimeouts, gam
     loadGreenModel(scene, characterModels);
     loadYellowModel(scene, characterModels);
     loadPinkModel(scene, characterModels);
+    loadGLModel(scene, characterModels); // Load gl.glb next to pink characters
     loadFModel(scene, characterModels);
     loadAngleModel(scene, characterModels);
     loadLotusModel(scene, characterModels);

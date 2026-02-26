@@ -9,6 +9,7 @@ import { loadAllCharacters } from '../characters/CharacterLoader.js';
 import { updateCharacterInteractions } from '../characters/CharacterInteractions.js';
 import { initAudio } from '../audio/AudioManager.js';
 import { initInput } from '../input/InputHandler.js';
+import { createVideoScreen } from '../components/VideoScreen.js';
 
 let scene, camera, renderer;
 let ghostGroup, duckGroup;
@@ -18,6 +19,7 @@ let characterTimeouts = [];
 let newCharacterGroup = null;
 let duckHugData = null;
 let audioData = null;
+let videoScreen = null;
 
 // Game state
 const gameState = {
@@ -39,11 +41,13 @@ const gameState = {
     isAngleSoundPlaying: false,
     isAngleSongPlaying: false,
     isMusicPlaying: true,
+    musicWasPlayingBeforeAngle: false, // Track if music was playing before angle.mp3
+    hasUserInteracted: false,
     terrainUpdateFrame: 0
 };
 
 // Constants
-const SPEED = 30;
+const SPEED = 40;
 const SPEED2 = 15;
 const GRAVITY = 30;
 const JUMP = 15;
@@ -81,6 +85,27 @@ export function initGame() {
     // Create pinwheels
     pinwheels = createPinwheels(scene);
 
+    // Create video screen at spawn location
+    // Place your video file in /public/video.mp4
+    // If video file doesn't exist, it will show a colored screen with glitch effects
+    try {
+        videoScreen = createVideoScreen(scene, '/video.mp4', {
+            width: 100,
+            height: 50,
+            position: new THREE.Vector3(290, 27, 0), // In front of spawn, facing camera
+            rotation: new THREE.Euler(0, Math.PI / 2, 0), // Rotate 90 degrees to the left
+            distortionIntensity: 0.02,  // Distortion amount (0-1)
+            glitchIntensity: 0.1,       // Glitch effect intensity (0-1)
+            emissiveIntensity: 1.5,     // Screen brightness/glow
+            borderRadius: 0.08           // Border radius (0-0.5, higher = more rounded)
+        });
+    } catch (error) {
+        console.log('Video screen creation error (video file may not exist):', error);
+    }
+
+    // Store characterModels in gameState so AudioManager can access it
+    gameState.characterModels = characterModels;
+    
     // Initialize audio
     audioData = initAudio(gameState);
     
@@ -101,11 +126,19 @@ export function initGame() {
         const time = clock.getElapsedTime();
 
         // Keep background music playing if it should be (but not while ang.mp3 or custom song is playing)
-        if (audioData && audioData.bgMusic) {
+        // Only try to play if user has interacted (to avoid autoplay errors)
+        if (audioData && audioData.bgMusic && gameState.hasUserInteracted) {
             if (gameState.isMusicPlaying && audioData.bgMusic.paused && !gameState.isAngleSoundPlaying && !gameState.isAngleSongPlaying) {
                 audioData.bgMusic.volume = 0.3; // Restore volume
-                audioData.bgMusic.play().catch(e => console.log('BG music play error:', e));
+                audioData.bgMusic.play().catch(() => {
+                    // Silently handle play errors (user might not have interacted yet)
+                });
             }
+        }
+        
+        // Update button text to match current state
+        if (audioData && audioData.updateMusicButton) {
+            audioData.updateMusicButton(gameState);
         }
 
         // Update terrain
@@ -131,6 +164,11 @@ export function initGame() {
         // Update particles
         particles.update(delta, time);
         pinwheels.update(delta, time);
+
+        // Update video screen shader
+        if (videoScreen) {
+            videoScreen.update(time);
+        }
 
         // Update camera position
         updateCamera(delta, gameState, pinkLight, blueLight);

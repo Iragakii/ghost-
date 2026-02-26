@@ -1,4 +1,5 @@
 import { setExpression } from '../components/GhostExpressions.js';
+import { updateMusicButton } from '../audio/AudioManager.js';
 
 // Audio elements for character interactions
 let newCharSound = null;
@@ -12,12 +13,13 @@ export function initInput(gameState, ghostGroup, duckGroup, characterModels, cha
 
     // Keyboard input
     window.addEventListener('keydown', e => {
+        gameState.hasUserInteracted = true; // Mark user interaction
         gameState.keys[e.key.toLowerCase()] = true;
         
         // Expression keys
-        if (e.key === 'j') setExpression(ghostGroup, 'sad');
-        if (e.key === 'k') setExpression(ghostGroup, 'smile');
-        if (e.key === 'l') setExpression(ghostGroup, 'crying');
+        if (e.key === 'j') setExpression(ghostGroup, 'sad', gameState);
+        if (e.key === 'k') setExpression(ghostGroup, 'smile', gameState);
+        if (e.key === 'l') setExpression(ghostGroup, 'crying', gameState);
 
         // Handle F key for character interaction
         if (e.key.toLowerCase() === 'f') {
@@ -37,13 +39,25 @@ export function initInput(gameState, ghostGroup, duckGroup, characterModels, cha
                             angleSound.volume = 0.7;
                         }
 
+                        // Preserve music playing state before pausing (store in gameState so it's accessible)
+                        gameState.musicWasPlayingBeforeAngle = gameState.isMusicPlaying || !bgMusic.paused;
+                        
                         if (!angleSound.hasEndedListener) {
                             angleSound.addEventListener('ended', () => {
                                 gameState.isAngleSoundPlaying = false;
-                                if (bgMusic && gameState.isMusicPlaying) {
-                                    bgMusic.volume = 0.3;
-                                    bgMusic.play().catch(e => console.log('BG music resume error:', e));
+                                gameState.angleSound = null; // Clear reference
+                                // Always restore volume and resume bg music if it was playing
+                                if (bgMusic) {
+                                    bgMusic.volume = 0.3; // Restore volume
+                                    // Resume music if it was playing before angle.mp3 started
+                                    // Check gameState which is updated each time angle.mp3 starts
+                                    if (gameState.musicWasPlayingBeforeAngle) {
+                                        gameState.isMusicPlaying = true; // Ensure state is correct
+                                        bgMusic.play().catch(e => console.log('BG music resume error:', e));
+                                    }
                                 }
+                                // Update button text based on music state
+                                updateMusicButton(gameState);
                                 const chatElEnd = document.getElementById(`char${gameState.closestCharIndex + 1}-chat`);
                                 if (chatElEnd) {
                                     chatElEnd.style.display = 'none';
@@ -55,14 +69,23 @@ export function initInput(gameState, ghostGroup, duckGroup, characterModels, cha
                             angleSound.hasEndedListener = true;
                         }
 
+                        // Stop bg music when angle.mp3 starts (but preserve playing state)
+                        // Update music state each time (so ended handler uses current state)
+                        gameState.musicWasPlayingBeforeAngle = gameState.isMusicPlaying || !bgMusic.paused;
                         if (bgMusic) {
+                            // Don't change isMusicPlaying - we want it to resume after
                             bgMusic.pause();
                             bgMusic.currentTime = 0;
-                            bgMusic.volume = 0;
+                            bgMusic.volume = 0; // Mute it while angle.mp3 plays
                         }
 
                         gameState.isAngleSoundPlaying = true;
+                        gameState.angleSound = angleSound; // Store in gameState so button can access it
                         angleSound.currentTime = 0;
+                        
+                        // Update button immediately to show pause (||) when angle.mp3 is playing
+                        updateMusicButton(gameState);
+                        
                         angleSound.play().catch(e => console.log('Angle sound play error:', e));
 
                         const notifEl = document.getElementById('angle-notif');
@@ -208,7 +231,7 @@ export function initInput(gameState, ghostGroup, duckGroup, characterModels, cha
     window.addEventListener('keyup', e => {
         gameState.keys[e.key.toLowerCase()] = false;
         if (['j', 'k', 'l'].includes(e.key.toLowerCase())) {
-            setExpression(ghostGroup, 'neutral');
+            setExpression(ghostGroup, 'neutral', gameState);
         }
     });
 
@@ -222,6 +245,7 @@ export function initInput(gameState, ghostGroup, duckGroup, characterModels, cha
     let pendingMouseMove = null;
 
     window.addEventListener('mousedown', (e) => {
+        gameState.hasUserInteracted = true; // Mark user interaction
         gameState.isMouseDown = true;
         gameState.mouseX = e.clientX;
         gameState.mouseY = e.clientY;
@@ -438,6 +462,9 @@ function handleSongUrl(url, char, gameState, bgMusic) {
     if (isEmbed && embedUrl && embedIframe) {
         gameState.isAngleSongPlaying = true;
         embedIframe.src = embedUrl;
+        
+        // Update button to show pause (||) when custom song (embed) is playing
+        updateMusicButton(gameState);
 
         if (embedContainer) {
             embedContainer.style.display = 'block';
@@ -495,6 +522,10 @@ function handleSongUrl(url, char, gameState, bgMusic) {
         angleSongPlayer = new Audio();
         angleSongPlayer.volume = 0.7;
         gameState.isAngleSongPlaying = true;
+        gameState.angleSongPlayer = angleSongPlayer; // Store in gameState so button can access it
+        
+        // Update button to show pause (||) when custom song is playing
+        updateMusicButton(gameState);
 
         if (chatEl) {
             chatEl.textContent = "Playing song...";
@@ -504,6 +535,9 @@ function handleSongUrl(url, char, gameState, bgMusic) {
             console.log('Song load error:', e, angleSongPlayer.error);
             alert('Error loading song. Please check the URL is a valid direct audio file link (.mp3, .wav, .ogg)');
             gameState.isAngleSongPlaying = false;
+            gameState.angleSongPlayer = null; // Clear reference
+            // Update button text
+            updateMusicButton(gameState);
             if (chatEl) {
                 chatEl.style.display = 'none';
             }
@@ -516,10 +550,13 @@ function handleSongUrl(url, char, gameState, bgMusic) {
 
         angleSongPlayer.addEventListener('ended', () => {
             gameState.isAngleSongPlaying = false;
+            gameState.angleSongPlayer = null; // Clear reference
             if (bgMusic && gameState.isMusicPlaying) {
                 bgMusic.volume = 0.3;
                 bgMusic.play().catch(e => console.log('BG music resume error:', e));
             }
+            // Update button text based on music state
+            updateMusicButton(gameState);
             if (chatEl) {
                 chatEl.style.display = 'none';
             }
@@ -535,6 +572,12 @@ function handleSongUrl(url, char, gameState, bgMusic) {
                 console.log('Song play error:', e);
                 alert('Error playing song. Please check the URL is valid and accessible.');
                 gameState.isAngleSongPlaying = false;
+                gameState.angleSongPlayer = null; // Clear reference
+                // Update button text
+                const bwButton = document.getElementById('bw');
+                if (bwButton) {
+                    bwButton.textContent = gameState.isMusicPlaying ? '||' : '▶';
+                }
                 if (chatEl) {
                     chatEl.style.display = 'none';
                 }
@@ -576,6 +619,9 @@ function closeEmbed(char, gameState, bgMusic) {
         window.angleEmbedMessageHandler = null;
     }
     gameState.isAngleSongPlaying = false;
+    gameState.angleSongPlayer = null; // Clear reference
+    // Update button text
+    updateMusicButton(gameState);
     if (bgMusic && gameState.isMusicPlaying) {
         bgMusic.volume = 0.3;
         bgMusic.play().catch(err => console.log('BG music resume error:', err));

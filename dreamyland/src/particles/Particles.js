@@ -162,12 +162,44 @@ export function createParticles(scene) {
                 const rightDir = new THREE.Vector3(-actualMoveDir.z, 0, actualMoveDir.x).normalize();
                 const upDir = new THREE.Vector3(0, 1, 0);
                 const windParallelDir = actualMoveDir.clone().multiplyScalar(-1).normalize();
-                const SPEED = 30;
+                const SPEED = 40; // Match original SPEED constant
 
+                // Front center wind
                 const posCenter = ghostPos.clone().add(actualMoveDir.clone().multiplyScalar(5)).add(
                     new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 0.3)
                 );
                 spawnWindStream(posCenter, windParallelDir, SPEED * 1.5, 0.1);
+
+                // Left side wind
+                const pos1 = ghostPos.clone().add(rightDir.clone().multiplyScalar(-8)).add(
+                    new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 0.3)
+                );
+                spawnWindStream(pos1, windParallelDir, SPEED * 1.5, 0.1);
+
+                // Right side wind
+                const pos2 = ghostPos.clone().add(rightDir.clone().multiplyScalar(8)).add(
+                    new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 0.3)
+                );
+                spawnWindStream(pos2, windParallelDir, SPEED * 1.5, 0.1);
+
+                // Top wind
+                const pos3 = ghostPos.clone().add(upDir.clone().multiplyScalar(7)).add(
+                    new THREE.Vector3((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.5)
+                );
+                spawnWindStream(pos3, windParallelDir, SPEED * 1.5, 0.1);
+
+                // Top-left wind
+                const pos4 = ghostPos.clone().add(upDir.clone().multiplyScalar(7)).add(rightDir.clone().multiplyScalar(-6)).add(
+                    new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3)
+                );
+                spawnWindStream(pos4, windParallelDir, SPEED * 1.5, 0.1);
+
+                // Top-right wind
+                const pos5 = ghostPos.clone().add(upDir.clone().multiplyScalar(7)).add(rightDir.clone().multiplyScalar(6)).add(
+                    new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3)
+                );
+                spawnWindStream(pos5, windParallelDir, SPEED * 1.5, 0.1);
+
                 lastWindStreamTime = time;
             }
         },

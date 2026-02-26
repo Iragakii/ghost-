@@ -1,8 +1,13 @@
 import * as THREE from 'three';
 
-export function setExpression(ghostGroup, exp) {
+export function setExpression(ghostGroup, exp, gameState = null) {
     const userData = ghostGroup.userData;
     if (!userData) return;
+    
+    // Update gameState if provided
+    if (gameState) {
+        gameState.currentExpression = exp;
+    }
 
     const { leftEye, rightEye, mouth, tears, leftEyelash, rightEyelash } = userData;
 
