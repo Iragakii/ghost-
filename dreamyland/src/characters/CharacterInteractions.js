@@ -52,7 +52,7 @@ function getCharId(index) {
     return charMap[index] || `char${index + 1}`;
 }
 
-export function updateCharacterInteractions(camera, gameState, ghostGroup, characterModels, characterTimeouts, newCharacterGroup, time) {
+export function updateCharacterInteractions(camera, gameState, luvuGroup, characterModels, characterTimeouts, newCharacterGroup, time) {
     gameState.closestCharIndex = -1;
     let minDistance = INTERACTION_DISTANCE;
 
@@ -63,7 +63,7 @@ export function updateCharacterInteractions(camera, gameState, ghostGroup, chara
 
         const charPos = new THREE.Vector3();
         char.group.getWorldPosition(charPos);
-        const distance = ghostGroup.position.distanceTo(charPos);
+        const distance = luvuGroup.position.distanceTo(charPos);
         const charId = getCharId(i);
         const notifEl = document.getElementById(`${charId}-notif`);
         const chatEl = document.getElementById(`${charId}-chat`);
@@ -179,7 +179,7 @@ export function updateCharacterInteractions(camera, gameState, ghostGroup, chara
     if (newCharacterGroup && gameState.closestCharIndex < 0) {
         const charPos = new THREE.Vector3();
         newCharacterGroup.getWorldPosition(charPos);
-        const distanceToGhost = ghostGroup.position.distanceTo(charPos);
+        const distanceToGhost = luvuGroup.position.distanceTo(charPos);
 
         if (distanceToGhost < INTERACTION_DISTANCE) {
             gameState.isNewCharClose = true;
@@ -222,11 +222,11 @@ export function updateCharacterInteractions(camera, gameState, ghostGroup, chara
             newCharacterGroup.getWorldPosition(charPos);
             const headPos = charPos.clone();
             headPos.y += 3;
-            const distanceToGhost = ghostGroup.position.distanceTo(charPos);
+            const distanceToGhost = luvuGroup.position.distanceTo(charPos);
             const maxDistance = 50;
             const screenPos = headPos.clone().project(camera);
-            const ghostScreenPos = ghostGroup.position.clone().project(camera);
-            const ghostHeadPos = ghostGroup.position.clone();
+            const ghostScreenPos = luvuGroup.position.clone().project(camera);
+            const ghostHeadPos = luvuGroup.position.clone();
             ghostHeadPos.y += 2;
             const ghostHeadScreenPos = ghostHeadPos.clone().project(camera);
 
@@ -258,7 +258,7 @@ export function updateCharacterInteractions(camera, gameState, ghostGroup, chara
                 chatBottom < ghostTop || chatTop > ghostBottom);
 
             const cameraToChar = new THREE.Vector3().subVectors(headPos, camera.position);
-            const cameraToGhost = new THREE.Vector3().subVectors(ghostGroup.position, camera.position);
+            const cameraToGhost = new THREE.Vector3().subVectors(luvuGroup.position, camera.position);
             const charDistance = cameraToChar.length();
             const ghostDistance = cameraToGhost.length();
             const ghostIsBlocking = ghostDistance < charDistance && isOverlapping;
@@ -289,10 +289,10 @@ export function updateCharacterInteractions(camera, gameState, ghostGroup, chara
             fatChar.group.getWorldPosition(charPos);
             const headPos = charPos.clone();
             headPos.y += 3;
-            const distanceToGhost = ghostGroup.position.distanceTo(charPos);
+            const distanceToGhost = luvuGroup.position.distanceTo(charPos);
             const maxDistance = 50;
             const screenPos = headPos.clone().project(camera);
-            const ghostHeadPos = ghostGroup.position.clone();
+            const ghostHeadPos = luvuGroup.position.clone();
             ghostHeadPos.y += 2;
             const ghostHeadScreenPos = ghostHeadPos.clone().project(camera);
 
@@ -326,7 +326,7 @@ export function updateCharacterInteractions(camera, gameState, ghostGroup, chara
                 chatBottom < ghostTop || chatTop > ghostBottom);
 
             const cameraToChar = new THREE.Vector3().subVectors(headPos, camera.position);
-            const cameraToGhost = new THREE.Vector3().subVectors(ghostGroup.position, camera.position);
+            const cameraToGhost = new THREE.Vector3().subVectors(luvuGroup.position, camera.position);
             const charDistance = cameraToChar.length();
             const ghostDistance = cameraToGhost.length();
             const ghostIsBlocking = ghostDistance < charDistance && isOverlapping;
@@ -362,10 +362,10 @@ export function updateCharacterInteractions(camera, gameState, ghostGroup, chara
             lmChar.group.getWorldPosition(charPos);
             const headPos = charPos.clone();
             headPos.y += 3;
-            const distanceToGhost = ghostGroup.position.distanceTo(charPos);
+            const distanceToGhost = luvuGroup.position.distanceTo(charPos);
             const maxDistance = 50;
             const screenPos = headPos.clone().project(camera);
-            const ghostHeadPos = ghostGroup.position.clone();
+            const ghostHeadPos = luvuGroup.position.clone();
             ghostHeadPos.y += 2;
             const ghostHeadScreenPos = ghostHeadPos.clone().project(camera);
 
@@ -399,7 +399,7 @@ export function updateCharacterInteractions(camera, gameState, ghostGroup, chara
                 chatBottom < ghostTop || chatTop > ghostBottom);
 
             const cameraToChar = new THREE.Vector3().subVectors(headPos, camera.position);
-            const cameraToGhost = new THREE.Vector3().subVectors(ghostGroup.position, camera.position);
+            const cameraToGhost = new THREE.Vector3().subVectors(luvuGroup.position, camera.position);
             const charDistance = cameraToChar.length();
             const ghostDistance = cameraToGhost.length();
             const ghostIsBlocking = ghostDistance < charDistance && isOverlapping;

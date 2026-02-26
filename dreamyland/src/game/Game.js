@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createScene } from '../scenes/Scene.js';
-import { createGhost } from '../components/Ghost.js';
+import { createLuvu } from '../components/Luvu.js';
+import { updateExpressionAnimation } from '../components/LuvuExpressions.js';
 import { createDuck } from '../components/Duck.js';
 import { createDuckHug, updateDuckHug } from '../components/DuckHug.js';
 import { createParticles } from '../particles/Particles.js';
@@ -12,7 +13,7 @@ import { initInput } from '../input/InputHandler.js';
 import { createVideoScreen } from '../components/VideoScreen.js';
 
 let scene, camera, renderer;
-let ghostGroup, duckGroup;
+let luvuGroup, duckGroup;
 let particles, pinwheels;
 let characterModels = [];
 let characterTimeouts = [];
@@ -29,9 +30,9 @@ const gameState = {
     mouseY: 0,
     cameraRotationY: 0,
     cameraRotationX: 0,
-    ghostVel: new THREE.Vector3(),
+    luvuVel: new THREE.Vector3(),
     duckVel: new THREE.Vector3(),
-    ghostCanJump: true,
+    luvuCanJump: true,
     isHugging: false,
     neckStretch: 1.0,
     lastDuckWalkTime: 0,
@@ -73,7 +74,7 @@ export function initGame() {
     const blueLight = sceneData.blueLight;
 
     // Create characters
-    ghostGroup = createGhost(scene);
+    luvuGroup = createLuvu(scene);
     duckGroup = createDuck(scene);
     
     // Create duck hug system
@@ -110,7 +111,7 @@ export function initGame() {
     audioData = initAudio(gameState);
     
     // Initialize input
-    initInput(gameState, ghostGroup, duckGroup, characterModels, characterTimeouts, newCharacterGroup, audioData);
+    initInput(gameState, luvuGroup, duckGroup, characterModels, characterTimeouts, newCharacterGroup, audioData);
 
     // Load characters
     loadAllCharacters(scene, characterModels, characterTimeouts, gameState, audioData).then(group => {
@@ -153,13 +154,13 @@ export function initGame() {
         }
 
         // Update camera
-        const camAngle = Math.atan2(camera.position.x - ghostGroup.position.x, camera.position.z - ghostGroup.position.z);
+        const camAngle = Math.atan2(camera.position.x - luvuGroup.position.x, camera.position.z - luvuGroup.position.z);
         
         // Update duck
         updateDuck(delta, time, camAngle, getTerrainY, gameState, duckGroup, audioData);
         
-        // Update ghost (this also updates isHugging state)
-        updateGhost(delta, time, camAngle, getTerrainY, gameState, particles, ghostGroup, duckGroup, audioData);
+        // Update luvu (this also updates isHugging state)
+        updateLuvu(delta, time, camAngle, getTerrainY, gameState, particles, luvuGroup, duckGroup, audioData);
         
         // Update particles
         particles.update(delta, time);
@@ -174,10 +175,10 @@ export function initGame() {
         updateCamera(delta, gameState, pinkLight, blueLight);
 
         // Update character interactions
-        updateCharacterInteractions(camera, gameState, ghostGroup, characterModels, characterTimeouts, newCharacterGroup, time);
+        updateCharacterInteractions(camera, gameState, luvuGroup, characterModels, characterTimeouts, newCharacterGroup, time);
 
         // Update duck hug interaction
-        updateDuckHug(delta, gameState.isHugging, ghostGroup, duckGroup, duckHugData, scene);
+        updateDuckHug(delta, gameState.isHugging, luvuGroup, duckGroup, duckHugData, scene);
 
         renderer.render(scene, camera);
     }
@@ -260,7 +261,7 @@ function updateDuck(delta, time, camAngle, getTerrainY, state, duckGroup, audioD
     }
 }
 
-function updateGhost(delta, time, camAngle, getTerrainY, state, particles, ghostGroup, duckGroup, audioData) {
+function updateLuvu(delta, time, camAngle, getTerrainY, state, particles, luvuGroup, duckGroup, audioData) {
     const gDir = new THREE.Vector3();
     if (state.keys['w']) gDir.z -= 1;
     if (state.keys['s']) gDir.z += 1;
@@ -271,134 +272,306 @@ function updateGhost(delta, time, camAngle, getTerrainY, state, particles, ghost
 
     if (gMoving) {
         const moveVel = gDir.clone().multiplyScalar(SPEED);
-        particles.spawnFlowerParticles(ghostGroup.position, moveVel);
+        particles.spawnFlowerParticles(luvuGroup.position, moveVel);
     }
 
-    const dist = ghostGroup.position.distanceTo(duckGroup.position);
+    const dist = luvuGroup.position.distanceTo(duckGroup.position);
     state.isHugging = dist < 5.0 && !gMoving;
+
+    const userData = luvuGroup.userData;
+    if (!userData || !userData.bodyMesh) {
+        // Model not loaded yet, just update position
+        if (gMoving) {
+            const mx = gDir.x * Math.cos(camAngle) + gDir.z * Math.sin(camAngle);
+            const mz = -gDir.x * Math.sin(camAngle) + gDir.z * Math.cos(camAngle);
+            state.luvuVel.x = mx * SPEED;
+            state.luvuVel.z = mz * SPEED;
+            // Calculate target rotation - match original ghost code exactly
+            // Character faces the direction it's moving (same as original ghost)
+            const targetRot = Math.atan2(state.luvuVel.x, state.luvuVel.z);
+            luvuGroup.rotation.y = lerpAngle(luvuGroup.rotation.y, targetRot, 10 * delta);
+        } else {
+            state.luvuVel.x *= (1 - 10 * delta);
+            state.luvuVel.z *= (1 - 10 * delta);
+        }
+        luvuGroup.position.x += state.luvuVel.x * delta;
+        luvuGroup.position.z += state.luvuVel.z * delta;
+        return;
+    }
+    
+    // Set initial Y position on terrain when model first loads
+    if (!userData.initialYSet) {
+        const bottomOffset = userData.bottomOffset || 6.0; // Default to 6.0 for scaled model
+        const initialTerrainY = getTerrainY(luvuGroup.position.x, luvuGroup.position.z, time);
+        luvuGroup.position.y = initialTerrainY + bottomOffset;
+        userData.initialYSet = true;
+    }
 
     if (!state.isHugging) {
         if (gMoving) {
             const mx = gDir.x * Math.cos(camAngle) + gDir.z * Math.sin(camAngle);
             const mz = -gDir.x * Math.sin(camAngle) + gDir.z * Math.cos(camAngle);
-            state.ghostVel.x = mx * SPEED;
-            state.ghostVel.z = mz * SPEED;
-            ghostGroup.rotation.y = lerpAngle(ghostGroup.rotation.y, Math.atan2(state.ghostVel.x, state.ghostVel.z), 10 * delta);
+            state.luvuVel.x = mx * SPEED;
+            state.luvuVel.z = mz * SPEED;
+            // Calculate target rotation - match original ghost code exactly
+            // Character faces the direction it's moving (same as original ghost)
+            const targetRot = Math.atan2(state.luvuVel.x, state.luvuVel.z);
+            luvuGroup.rotation.y = lerpAngle(luvuGroup.rotation.y, targetRot, 10 * delta);
             
-            particles.spawnWindStreams(ghostGroup.position, state.ghostVel, time);
+            particles.spawnWindStreams(luvuGroup.position, state.luvuVel, time);
         } else {
-            state.ghostVel.x *= (1 - 10 * delta);
-            state.ghostVel.z *= (1 - 10 * delta);
+            state.luvuVel.x *= (1 - 10 * delta);
+            state.luvuVel.z *= (1 - 10 * delta);
         }
         
-        // Jump logic - matches original code exactly
-        if (state.keys[' '] && state.ghostCanJump) {
-            state.ghostVel.y = JUMP;
-            state.ghostCanJump = false;
+        // Jump logic - matches original code exactly (KEEP JUMP SCALE ANIMATION)
+        if (state.keys[' '] && state.luvuCanJump) {
+            state.luvuVel.y = JUMP;
+            state.luvuCanJump = false;
             // Set scale when jumping (matches original line 1915)
-            const userData = ghostGroup.userData;
-            if (userData && userData.ghostBody) {
-                if (!userData.targetScale) {
-                    userData.targetScale = new THREE.Vector3(1, 1, 1);
-                }
-                userData.targetScale.set(0.6, 1.4, 0.6);
+            if (!userData.targetScale) {
+                userData.targetScale = new THREE.Vector3(1, 1, 1);
             }
+            userData.targetScale.set(0.6, 1.4, 0.6);
             if (audioData && audioData.playJumpSound) {
                 audioData.playJumpSound();
             }
         }
         
-        state.ghostVel.y -= GRAVITY * delta;
-        ghostGroup.position.addScaledVector(state.ghostVel, delta);
+        state.luvuVel.y -= GRAVITY * delta;
+        luvuGroup.position.addScaledVector(state.luvuVel, delta);
         
-        const fy = getTerrainY(ghostGroup.position.x, ghostGroup.position.z, time);
-        const bottomOffset = ghostGroup.userData?.bottomOffset || 1.0;
-        const wasInAir = !state.ghostCanJump; // Track if we were in air before landing
-        if (ghostGroup.position.y <= fy + bottomOffset) {
-            ghostGroup.position.y = fy + bottomOffset;
-            state.ghostVel.y = 0;
+        const fy = getTerrainY(luvuGroup.position.x, luvuGroup.position.z, time);
+        const bottomOffset = userData.bottomOffset || 6.0; // Default to 6.0 for scaled model
+        const wasInAir = !state.luvuCanJump; // Track if we were in air before landing
+        if (luvuGroup.position.y <= fy + bottomOffset) {
+            luvuGroup.position.y = fy + bottomOffset;
+            state.luvuVel.y = 0;
             // Set scale when landing (matches original line 1924) - only if we were in air
-            const userData = ghostGroup.userData;
-            if (userData && userData.ghostBody && wasInAir) {
+            if (wasInAir) {
                 if (!userData.targetScale) {
                     userData.targetScale = new THREE.Vector3(1, 1, 1);
                 }
                 userData.targetScale.set(1.5, 0.6, 1.5);
             }
-            state.ghostCanJump = true;
+            state.luvuCanJump = true;
         }
         
-        // Update ghost body scale animation (matches original lines 1927-1928)
-        const userData = ghostGroup.userData;
-        if (userData && userData.ghostBody) {
-            const defScale = new THREE.Vector3(1, 1, 1);
-            if (!userData.targetScale) {
-                userData.targetScale = new THREE.Vector3(1, 1, 1);
-            }
-            // Lerp body scale toward target, then lerp target back to default
-            userData.ghostBody.scale.lerp(userData.targetScale, 15 * delta);
+        // Update body scale animation (KEEP JUMP SCALE - matches original lines 1927-1928)
+        // Only apply scale animation during jump/land, not during normal movement
+        // This prevents eyes from moving up when body scales
+        const defScale = new THREE.Vector3(1, 1, 1);
+        if (!userData.targetScale) {
+            userData.targetScale = new THREE.Vector3(1, 1, 1);
+        }
+        
+        // Check if we're currently jumping or just landed (scale animation active)
+        const isJumpingOrLanding = !state.luvuCanJump || 
+            (userData.targetScale && (
+                Math.abs(userData.targetScale.x - 1) > 0.01 ||
+                Math.abs(userData.targetScale.y - 1) > 0.01 ||
+                Math.abs(userData.targetScale.z - 1) > 0.01
+            ));
+        
+        if (isJumpingOrLanding) {
+            // Only lerp body scale when jumping/landing
+            userData.bodyMesh.scale.lerp(userData.targetScale, 15 * delta);
             userData.targetScale.lerp(defScale, 5 * delta);
+        } else {
+            // When not jumping/landing, ensure body is at default scale
+            userData.bodyMesh.scale.lerp(defScale, 15 * delta);
+            userData.targetScale.copy(defScale);
         }
         
-        // Update ghost body animation
-        if (userData && userData.ghostBody) {
-            const gMoving = state.keys['w'] || state.keys['s'] || state.keys['a'] || state.keys['d'];
-            const targetLean = gMoving ? THREE.MathUtils.degToRad(20) : 0;
-            userData.ghostBody.rotation.x = THREE.MathUtils.lerp(userData.ghostBody.rotation.x, targetLean, 8 * delta);
-            userData.ghostBody.position.y = bottomOffset + (state.ghostCanJump ? Math.sin(time * 2) * 0.3 : 0);
-            
-            // Running arm animation
+        // Keep model group at original position - no bobbing animation
+        // All parts should stay at their default imported positions when moving
+        if (userData.modelGroup && userData.modelGroupOriginalPos) {
+            userData.modelGroup.position.copy(userData.modelGroupOriginalPos);
+            userData.modelGroup.scale.copy(userData.modelGroupOriginalScale || new THREE.Vector3(1, 1, 1));
+        }
+        
+        // Also ensure the entire luvuGroup has no side rotation
+        luvuGroup.rotation.z = 0;
+        luvuGroup.rotation.x = 0;
+        
+        // Ensure modelGroup has no side rotation
+        if (userData.modelGroup) {
+            userData.modelGroup.rotation.z = 0;
+            userData.modelGroup.rotation.x = 0;
+            userData.modelGroup.quaternion.setFromEuler(new THREE.Euler(0, userData.modelGroup.rotation.y, 0));
+        }
+        
+        // Keep ALL parts at their original imported POSITIONS always (prevents parts from moving)
+        // But allow rotations/scales to be animated
+        if (userData.originalPositions) {
+            // Keep eyes at original position always
+            if (userData.leftEye && userData.originalPositions.leftEye) {
+                userData.leftEye.position.copy(userData.originalPositions.leftEye);
+            }
+            if (userData.rightEye && userData.originalPositions.rightEye) {
+                userData.rightEye.position.copy(userData.originalPositions.rightEye);
+            }
+            // Keep hands at original position
+            if (userData.leftHand && userData.originalPositions.leftHand) {
+                userData.leftHand.position.copy(userData.originalPositions.leftHand);
+            }
+            if (userData.rightHand && userData.originalPositions.rightHand) {
+                userData.rightHand.position.copy(userData.originalPositions.rightHand);
+            }
+            // Keep silkBody at original position
+            if (userData.silkBody && userData.originalPositions.silkBody) {
+                userData.silkBody.position.copy(userData.originalPositions.silkBody);
+            }
+            // Keep scarSilk at original position
+            if (userData.scarSilk && userData.originalPositions.scarSilk) {
+                userData.scarSilk.position.copy(userData.originalPositions.scarSilk);
+            }
+        }
+        
+        // Update body animation - lean forward when moving (25 degrees)
+        // This happens AFTER position reset, so positions stay correct
+        const targetLean = gMoving ? THREE.MathUtils.degToRad(25) : 0;
+        if (userData.silkBody && userData.originalRotations && userData.originalRotations.silkBody) {
+            // Apply forward lean on Z axis
+            userData.silkBody.rotation.z = THREE.MathUtils.lerp(userData.silkBody.rotation.z, -targetLean, 8 * delta);
+            // Keep X and Y at original when not moving, or at 0 when moving (no side lean)
             if (gMoving) {
-                const runSpeed = 8;
-                const armSwing = Math.sin(time * runSpeed) * 0.6;
-                if (userData.leftArm) {
-                    userData.leftArm.rotation.x = Math.PI / 4 + armSwing;
-                    userData.leftArm.rotation.z = -Math.PI / 6;
-                }
-                if (userData.rightArm) {
-                    userData.rightArm.rotation.x = Math.PI / 4 - armSwing;
-                    userData.rightArm.rotation.z = Math.PI / 6;
-                }
+                userData.silkBody.rotation.x = 0;
+                userData.silkBody.rotation.y = 0;
             } else {
-                if (userData.leftArm) {
-                    userData.leftArm.rotation.x = Math.PI / 4;
-                    userData.leftArm.rotation.z = -Math.PI / 6 + Math.sin(time * 2) * 0.1;
-                }
-                if (userData.rightArm) {
-                    userData.rightArm.rotation.x = Math.PI / 4;
-                    userData.rightArm.rotation.z = Math.PI / 6 - Math.sin(time * 2) * 0.1;
-                }
+                userData.silkBody.rotation.x = userData.originalRotations.silkBody.x;
+                userData.silkBody.rotation.y = userData.originalRotations.silkBody.y;
             }
         }
         
-        // Update tears if crying
-        if (state.currentExpression === 'crying' && userData && userData.tears) {
-            userData.tears.forEach(t => {
-                t.yOffset += delta * 2;
-                if (t.yOffset > 1.0) t.yOffset = 0;
-                t.mesh.position.set(t.isLeft ? -0.4 : 0.4, 0.1 - t.yOffset, 0.1);
-                t.mesh.scale.setScalar(1.0 - t.yOffset);
-            });
+        // Reset rotations/scales to original ONLY when NOT moving (to prevent animation conflicts)
+        if (!gMoving && userData.originalScales && userData.originalRotations) {
+            // Reset eyes scale and rotation when idle
+            if (userData.leftEye && userData.originalScales.leftEye) {
+                userData.leftEye.scale.copy(userData.originalScales.leftEye);
+                userData.leftEye.rotation.copy(userData.originalRotations.leftEye);
+            }
+            if (userData.rightEye && userData.originalScales.rightEye) {
+                userData.rightEye.scale.copy(userData.originalScales.rightEye);
+                userData.rightEye.rotation.copy(userData.originalRotations.rightEye);
+            }
+            
+            // Reset hands scale when idle (rotation.z handled by expressions)
+            if (userData.leftHand && userData.originalScales.leftHand) {
+                userData.leftHand.scale.copy(userData.originalScales.leftHand);
+            }
+            if (userData.rightHand && userData.originalScales.rightHand) {
+                userData.rightHand.scale.copy(userData.originalScales.rightHand);
+            }
+            
+            // Reset scarSilk scale and rotation when idle
+            if (userData.scarSilk && userData.originalScales.scarSilk) {
+                userData.scarSilk.scale.copy(userData.originalScales.scarSilk);
+                userData.scarSilk.rotation.copy(userData.originalRotations.scarSilk);
+            }
         }
+        // Hand animation removed when moving - keep hands in default position
+        // Hands will only animate through expressions (handled in LuvuExpressions.js)
+        if (userData.leftHand && userData.rightHand && !gMoving) {
+            // Only reset to default when not moving (expressions may override this)
+            if (!state.isHugging) {
+                // Default/neutral hand position when idle (expressions will override if needed)
+                userData.leftHand.rotation.x = 0;
+                userData.leftHand.rotation.y = 0;
+                userData.leftHand.rotation.z = 0;
+                
+                userData.rightHand.rotation.x = 0;
+                userData.rightHand.rotation.y = 0;
+                userData.rightHand.rotation.z = 0;
+            }
+        }
+        
+        // Update expression animations smoothly
+        // Don't animate eyes during movement or jumping
+        const isMoving = gMoving;
+        const isJumping = !state.luvuCanJump;
+        updateExpressionAnimation(luvuGroup, delta, isMoving, isJumping);
+        
+        // Animate tears when crying (similar to old ghost code)
+        if (state.currentExpression === 'cry' || state.currentExpression === 'crying') {
+            const userData = luvuGroup.userData;
+            if (userData.tears && userData.faceGroup && userData.leftEye && userData.rightEye) {
+                // Position face group at the center between eyes (in model local space)
+                if (userData.leftEyeOriginalPos && userData.rightEyeOriginalPos) {
+                    // Average the eye positions to center the face group
+                    const avgX = (userData.leftEyeOriginalPos.x + userData.rightEyeOriginalPos.x) * 0.5;
+                    const avgY = (userData.leftEyeOriginalPos.y + userData.rightEyeOriginalPos.y) * 0.5;
+                    const avgZ = (userData.leftEyeOriginalPos.z + userData.rightEyeOriginalPos.z) * 0.5;
+                    
+                    // Position face group at eye level
+                    userData.faceGroup.position.set(avgX, avgY, avgZ);
+                }
+                
+                // Get current eye positions (in model local space, accounting for any position changes)
+                const leftEyePos = userData.leftEye ? userData.leftEye.position.clone() : userData.leftEyeOriginalPos;
+                const rightEyePos = userData.rightEye ? userData.rightEye.position.clone() : userData.rightEyeOriginalPos;
+                
+                // Animate tears (positioned in faceGroup local space, directly under eyes)
+                // 4 tears total: 2 for left eye, 2 for right eye
+                userData.tears.forEach((t, index) => {
+                    if (t.mesh.visible) {
+                        t.yOffset += delta * 2;
+                        if (t.yOffset > 1.0) t.yOffset = 0; // Reset when tear falls off
+                        
+                        // Calculate eye position relative to face group center
+                        const eyePos = t.isLeft ? leftEyePos : rightEyePos;
+                        const eyeX = eyePos.x - userData.faceGroup.position.x;
+                        const eyeY = eyePos.y - userData.faceGroup.position.y;
+                        const eyeZ = eyePos.z - userData.faceGroup.position.z;
+                        
+                        // Position tears directly below eyes, falling down
+                        // Use a configurable offset (works with any value, even very small ones)
+                        const tearOffsetY = 0.1; // Offset to move tears higher (positive = up, negative = down)
+                        
+                        // Rotate tears horizontally around the eye (fixed circular pattern, no animation)
+                        const tearIndex = index % 2; // 0 or 1 for each eye
+                        const baseAngle = tearIndex * Math.PI + 4.8; // 0 or π radians (180 degrees apart)
+                        const radius = 0.15; // Distance from eye center
+                        
+                        // Fixed angle (no time-based rotation) - change this value to adjust fixed angle
+                        const fixedAngle = baseAngle; // Fixed angle for each tear (0 or π)
+                        
+                        // Calculate horizontal position using fixed rotation
+                        const horizontalOffset = Math.cos(fixedAngle) * radius;
+                        const forwardOffset = Math.sin(fixedAngle) * radius;
+                        
+                        const tearX = eyeX + horizontalOffset + 0.35;
+                        const tearY = eyeY + tearOffsetY - t.yOffset; // Start at eye level + offset, fall down
+                        const tearZ = eyeZ + forwardOffset; // Fixed rotated forward/back position
+                        
+                        // Ensure tear position is valid (not NaN or Infinity) before setting
+                        if (isFinite(tearX) && isFinite(tearY) && isFinite(tearZ)) {
+                            t.mesh.position.set(tearX, tearY, tearZ);
+                            t.mesh.scale.setScalar(Math.max(0.01, 1.0 - t.yOffset)); // Shrink as it falls, min scale 0.01
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Expression-based animations - no side lean/shake allowed
+        // Only forward lean is allowed, expressions don't affect body rotation.z
     } else {
-        const bottomOffset = ghostGroup.userData?.bottomOffset || 1.0;
-        const gy = getTerrainY(ghostGroup.position.x, ghostGroup.position.z, time) + bottomOffset;
-        ghostGroup.position.y = THREE.MathUtils.lerp(ghostGroup.position.y, gy, 10 * delta);
-        state.ghostVel.set(0, 0, 0);
-        state.ghostCanJump = true;
+        const bottomOffset = userData.bottomOffset || 6.0; // Default to 6.0 for scaled model
+        const gy = getTerrainY(luvuGroup.position.x, luvuGroup.position.z, time) + bottomOffset;
+        luvuGroup.position.y = THREE.MathUtils.lerp(luvuGroup.position.y, gy, 10 * delta);
+        state.luvuVel.set(0, 0, 0);
+        state.luvuCanJump = true;
         
-        // Hugging animation - arms out
-        const userData = ghostGroup.userData;
-        if (userData) {
-            if (userData.ghostBody) {
-                userData.ghostBody.scale.lerp(new THREE.Vector3(1, 1, 1), 10 * delta);
-            }
-            if (userData.leftArm) {
-                userData.leftArm.rotation.z = -Math.PI / 2;
-            }
-            if (userData.rightArm) {
-                userData.rightArm.rotation.z = Math.PI / 2;
-            }
+        // Hugging animation - hands out
+        if (userData.bodyMesh) {
+            userData.bodyMesh.scale.lerp(new THREE.Vector3(1, 1, 1), 10 * delta);
+        }
+        if (userData.leftHand) {
+            userData.leftHand.rotation.z = -Math.PI / 2;
+        }
+        if (userData.rightHand) {
+            userData.rightHand.rotation.z = Math.PI / 2;
         }
     }
 }
@@ -410,14 +583,14 @@ function updateCamera(delta, state, pinkLight, blueLight) {
     const rightVector = new THREE.Vector3(1, 0, 0);
     rightVector.applyAxisAngle(new THREE.Vector3(0, 1, 0), state.cameraRotationY);
     rotatedOffset.applyAxisAngle(rightVector, state.cameraRotationX);
-    rotatedOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), ghostGroup.rotation.y * 0.1);
+    rotatedOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), luvuGroup.rotation.y * 0.1);
 
-    camera.position.lerp(ghostGroup.position.clone().add(rotatedOffset), 5 * delta);
-    camTarget.copy(ghostGroup.position).add(new THREE.Vector3(0, 2, 0));
+    camera.position.lerp(luvuGroup.position.clone().add(rotatedOffset), 5 * delta);
+    camTarget.copy(luvuGroup.position).add(new THREE.Vector3(0, 2, 0));
     camera.lookAt(camTarget);
     
-    pinkLight.position.set(ghostGroup.position.x - 3, ghostGroup.position.y + 3, ghostGroup.position.z + 3);
-    blueLight.position.set(ghostGroup.position.x + 3, ghostGroup.position.y + 3, ghostGroup.position.z - 3);
+    pinkLight.position.set(luvuGroup.position.x - 3, luvuGroup.position.y + 3, luvuGroup.position.z + 3);
+    blueLight.position.set(luvuGroup.position.x + 3, luvuGroup.position.y + 3, luvuGroup.position.z - 3);
 }
 
 
@@ -429,5 +602,5 @@ function lerpAngle(a, b, t) {
 }
 
 // Export game state for other modules
-export { gameState, characterModels, characterTimeouts, newCharacterGroup };
+export { gameState, characterModels, characterTimeouts, newCharacterGroup, luvuGroup };
 

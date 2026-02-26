@@ -1,4 +1,4 @@
-import { setExpression } from '../components/GhostExpressions.js';
+import { setExpression } from '../components/LuvuExpressions.js';
 import { updateMusicButton } from '../audio/AudioManager.js';
 
 // Audio elements for character interactions
@@ -8,7 +8,7 @@ let angleSongPlayer = null;
 let fatSound = null;
 let lmSound = null;
 
-export function initInput(gameState, ghostGroup, duckGroup, characterModels, characterTimeouts, newCharacterGroup, audioData) {
+export function initInput(gameState, luvuGroup, duckGroup, characterModels, characterTimeouts, newCharacterGroup, audioData) {
     const { bgMusic } = audioData;
 
     // Keyboard input
@@ -16,10 +16,10 @@ export function initInput(gameState, ghostGroup, duckGroup, characterModels, cha
         gameState.hasUserInteracted = true; // Mark user interaction
         gameState.keys[e.key.toLowerCase()] = true;
         
-        // Expression keys
-        if (e.key === 'j') setExpression(ghostGroup, 'sad', gameState);
-        if (e.key === 'k') setExpression(ghostGroup, 'smile', gameState);
-        if (e.key === 'l') setExpression(ghostGroup, 'crying', gameState);
+        // Expression keys: J = cry (with tears), K = angry, L = neutral/sad (-.-)
+        if (e.key === 'j') setExpression(luvuGroup, 'cry', gameState);
+        if (e.key === 'k') setExpression(luvuGroup, 'angry', gameState);
+        if (e.key === 'l') setExpression(luvuGroup, 'neutral', gameState);
 
         // Handle F key for character interaction
         if (e.key.toLowerCase() === 'f') {
@@ -231,7 +231,7 @@ export function initInput(gameState, ghostGroup, duckGroup, characterModels, cha
     window.addEventListener('keyup', e => {
         gameState.keys[e.key.toLowerCase()] = false;
         if (['j', 'k', 'l'].includes(e.key.toLowerCase())) {
-            setExpression(ghostGroup, 'neutral', gameState);
+            setExpression(luvuGroup, 'neutral', gameState);
         }
     });
 

@@ -67,7 +67,7 @@ export function createDuckHug(scene, duckGroup) {
     };
 }
 
-export function updateDuckHug(delta, isHugging, ghostGroup, duckGroup, duckHugData, scene) {
+export function updateDuckHug(delta, isHugging, luvuGroup, duckGroup, duckHugData, scene) {
     const { floatingHead, neckCP, rebuildTube, getTubeMesh, setTubeMesh } = duckHugData;
     const up3 = new THREE.Vector3(0, 1, 0);
 
@@ -79,7 +79,7 @@ export function updateDuckHug(delta, isHugging, ghostGroup, duckGroup, duckHugDa
         duckUserData.bodyGroup.getWorldPosition(neckBaseWorld);
         neckBaseWorld.y += 2.0;
 
-        const gc = ghostGroup.position.clone();
+        const gc = luvuGroup.position.clone();
         gc.y += 2.0;
 
         const toGN = new THREE.Vector3().subVectors(gc, neckBaseWorld).normalize();
