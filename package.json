@@ -1,0 +1,10 @@
+{
+  "name": "dreamland",
+  "version": "1.0.0",
+  "scripts": {
+    "compress:glb": "gltf-transform optimize"
+  },
+  "devDependencies": {
+    "@gltf-transform/cli": "^4.3.0"
+  }
+}
