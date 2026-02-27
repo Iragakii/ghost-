@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
-import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const dracoLoader = new DRACOLoader();
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
@@ -101,22 +100,22 @@ function loadModelWithColor(colorHex, position, modelName, charIndex, scene, cha
 
 // Model loading functions
 function loadGreenModel(scene, characterModels) {
-    loadModelWithColor(0xDDAED3, { x: -20, y: 7, z: -150 }, 'Yellow', 0, scene, characterModels);
+    loadModelWithColor(0xDDAED3, { x: -20, y: 7, z: -250 }, 'Yellow', 0, scene, characterModels);
 }
 
 function loadYellowModel(scene, characterModels) {
-    loadModelWithColor(0xDDAED3, { x: 0, y: 7, z: -150 }, 'Yellow', 1, scene, characterModels);
+    loadModelWithColor(0xDDAED3, { x: 0, y: 7, z: -250 }, 'Yellow', 1, scene, characterModels);
 }
 
 function loadPinkModel(scene, characterModels) {
-    loadModelWithColor(0xDDAED3, { x: 20, y: 7, z: -150 }, 'Yellow', 2, scene, characterModels);
+    loadModelWithColor(0xDDAED3, { x: 20, y: 7, z: -250 }, 'Yellow', 2, scene, characterModels);
 }
 
 function loadGLModel(scene, characterModels) {
     gltfLoader.load('/pinklocation/gl.glb', (gltf) => {
         const modelGroup = new THREE.Group();
         // Position next to pink characters (to the right of the last pink character at x: 20)
-        modelGroup.position.set(40, 19, -150);
+        modelGroup.position.set(40, 19, -250);
         modelGroup.rotation.y = -Math.PI / 2; // Same rotation as pink characters
         modelGroup.scale.set(40, 40, 40); // Same scale as pink characters
 
@@ -138,6 +137,151 @@ function loadGLModel(scene, characterModels) {
         };
     }, undefined, (error) => {
         console.error('Error loading gl.glb:', error);
+    });
+}
+
+function loadIceBModel(scene, characterModels) {
+    gltfLoader.load('/pinklocation/iceb.glb', (gltf) => {
+        const modelGroup = new THREE.Group();
+        // Position next to gl.glb (which is at x: 40)
+        modelGroup.position.set(-160, 19, -200);
+        modelGroup.rotation.y = -Math.PI / 2; // Same rotation as gl.glb
+        modelGroup.scale.set(40, 40, 40); // Same scale as gl.glb
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        // Store reference to character model (using index 17)
+        characterModels[17] = {
+            group: modelGroup,
+            position: { x: 60, y: 7, z: -150 },
+            isInteracting: false
+        };
+    }, undefined, (error) => {
+        console.error('Error loading iceb.glb:', error);
+    });
+}
+
+function loadIceEModel(scene, characterModels) {
+    gltfLoader.load('/pinklocation/icee.glb', (gltf) => {
+        const modelGroup = new THREE.Group();
+        // Position next to iceb.glb (which is at x: 60)
+        modelGroup.position.set(180, 19, -180);
+        modelGroup.rotation.y = -Math.PI / 2; // Same rotation as gl.glb
+        modelGroup.scale.set(40, 40, 40); // Same scale as gl.glb
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        // Store reference to character model (using index 18)
+        characterModels[18] = {
+            group: modelGroup,
+            position: { x: 80, y: 7, z: -150 },
+            isInteracting: false
+        };
+    }, undefined, (error) => {
+        console.error('Error loading icee.glb:', error);
+    });
+}
+
+function loadIceOModel(scene, characterModels) {
+    gltfLoader.load('/pinklocation/iceo.glb', (gltf) => {
+        const modelGroup = new THREE.Group();
+        // Position next to icee.glb (which is at x: 80)
+        modelGroup.position.set(-1, 19, -100);
+        modelGroup.rotation.y = -Math.PI / 2; // Same rotation as gl.glb
+        modelGroup.scale.set(40, 40, 40); // Same scale as gl.glb
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        // Store reference to character model (using index 19)
+        characterModels[19] = {
+            group: modelGroup,
+            position: { x: 100, y: 7, z: -150 },
+            isInteracting: false
+        };
+    }, undefined, (error) => {
+        console.error('Error loading iceo.glb:', error);
+    });
+}
+
+function loadIceRModel(scene, characterModels) {
+    gltfLoader.load('/pinklocation/icer.glb', (gltf) => {
+        const modelGroup = new THREE.Group();
+        // Position next to iceo.glb (which interaction position is at x: 100)
+        modelGroup.position.set(-110, 19, -200);
+        modelGroup.rotation.y = -Math.PI / 2; // Same rotation as gl.glb
+        modelGroup.scale.set(40, 40, 40); // Same scale as gl.glb
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        // Store reference to character model (using index 21)
+        characterModels[21] = {
+            group: modelGroup,
+            position: { x: 110, y: 7, z: -150 },
+            isInteracting: false
+        };
+    }, undefined, (error) => {
+        console.error('Error loading icer.glb:', error);
+    });
+}
+
+function loadIceVModel(scene, characterModels) {
+    gltfLoader.load('/pinklocation/icek.glb', (gltf) => {
+        const modelGroup = new THREE.Group();
+        // Position next to icer.glb (which is at x: 110)
+        modelGroup.position.set(-280, 19, -250);
+        modelGroup.rotation.y = -Math.PI / 2; // Same rotation as gl.glb
+        modelGroup.scale.set(40, 40, 40); // Same scale as gl.glb
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        // Store reference to character model (using index 20)
+        characterModels[20] = {
+            group: modelGroup,
+            position: { x: 120, y: 7, z: -150 },
+            isInteracting: false
+        };
+    }, undefined, (error) => {
+        console.error('Error loading icev.glb:', error);
     });
 }
 
@@ -529,11 +673,57 @@ function loadFATModel(scene, characterModels) {
     });
 }
 
+export function loadBiarModel(scene) {
+    gltfLoader.load('/playground/biar.glb', (gltf) => {
+        const modelGroup = new THREE.Group();
+        // Position next to duck at spawn location (duck is at x: 5, z: 5)
+        modelGroup.position.set(10, 10, 150); // Next to duck, slightly to the right
+        modelGroup.rotation.y = -Math.PI / 2; // Face forward
+        modelGroup.scale.set(12, 12, 12); // Similar scale to other characters
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+    }, undefined, (error) => {
+        console.error('Error loading biar.glb:', error);
+    });
+}
+
+export function loadBiabModel(scene) {
+    gltfLoader.load('/playground/biab.glb', (gltf) => {
+        const modelGroup = new THREE.Group();
+        // Position next to biar.glb (biar is at x: 10, y: 10, z: 250)
+        modelGroup.position.set(10, 10, 200); // Next to biar.glb, slightly to the right
+        modelGroup.rotation.y = -Math.PI / 2; // Face forward (same as biar)
+        modelGroup.scale.set(12, 12, 12); // Same scale as biar
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+    }, undefined, (error) => {
+        console.error('Error loading biab.glb:', error);
+    });
+}
+
 function loadNewCharacter(scene) {
     return new Promise((resolve) => {
         gltfLoader.load('/ld.glb', (gltf) => {
             const modelGroup = new THREE.Group();
-            modelGroup.position.set(0, 3, -130);
+            modelGroup.position.set(0, 3, -230);
             modelGroup.rotation.y = Math.PI / 2;
             modelGroup.scale.set(7, 7, 7);
 
@@ -568,6 +758,11 @@ export function loadAllCharacters(scene, characterModels, characterTimeouts, gam
     loadYellowModel(scene, characterModels);
     loadPinkModel(scene, characterModels);
     loadGLModel(scene, characterModels); // Load gl.glb next to pink characters
+    loadIceBModel(scene, characterModels); // Load iceb.glb
+    loadIceEModel(scene, characterModels); // Load icee.glb
+    loadIceOModel(scene, characterModels); // Load iceo.glb
+    loadIceRModel(scene, characterModels); // Load icer.glb
+    loadIceVModel(scene, characterModels); // Load icev.glb
     loadFModel(scene, characterModels);
     loadAngleModel(scene, characterModels);
     loadLotusModel(scene, characterModels);

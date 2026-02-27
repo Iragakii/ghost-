@@ -7,6 +7,7 @@ let angleSound = null;
 let angleSongPlayer = null;
 let fatSound = null;
 let lmSound = null;
+let fVideoSound = null;
 
 export function initInput(gameState, luvuGroup, duckGroup, characterModels, characterTimeouts, newCharacterGroup, audioData) {
     const { bgMusic } = audioData;
@@ -153,6 +154,52 @@ export function initInput(gameState, luvuGroup, duckGroup, characterModels, char
                 if (notifEl) {
                     notifEl.style.display = 'none';
                 }
+            }
+        }
+
+        // Handle Q key for f.glb (index 3) - play video sound
+        if (e.key.toLowerCase() === 'q') {
+            if (gameState.closestCharIndex === 3) {
+                const char = characterModels[3];
+                if (char) {
+                    // Stop background music
+                    if (bgMusic) {
+                        gameState.musicWasPlayingBeforeFVideo = gameState.isMusicPlaying || !bgMusic.paused;
+                        gameState.isMusicPlaying = false; // Update state to prevent auto-resume
+                        bgMusic.pause();
+                        bgMusic.currentTime = 0;
+                        bgMusic.volume = 0;
+                    }
+
+                    // Play video sound
+                    if (!fVideoSound) {
+                        fVideoSound = new Audio('/videoo.mp4');
+                        fVideoSound.volume = 0.7;
+                        
+                        // When video sound ends, resume bg music if it was playing
+                        fVideoSound.addEventListener('ended', () => {
+                            gameState.isFVideoPlaying = false;
+                            if (bgMusic && gameState.musicWasPlayingBeforeFVideo) {
+                                bgMusic.volume = 0.3;
+                                bgMusic.play().catch(e => console.log('BG music resume error:', e));
+                                gameState.isMusicPlaying = true;
+                            }
+                            updateMusicButton(gameState);
+                        });
+                    }
+
+                    gameState.isFVideoPlaying = true;
+                    fVideoSound.currentTime = 0;
+                    fVideoSound.play().catch(e => console.log('F video sound play error:', e));
+                    updateMusicButton(gameState);
+
+                    // Hide Q notification
+                    const qNotifEl = document.getElementById('f-q-notif');
+                    if (qNotifEl) {
+                        qNotifEl.style.display = 'none';
+                    }
+                }
+                return; // Exit early to prevent angle.glb handler from running
             }
         }
 

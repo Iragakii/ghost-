@@ -17,7 +17,7 @@ export function initAudio(gameState) {
     bgMusic.volume = 0.3;
     
     bgMusic.addEventListener('play', (e) => {
-        if (gameState.isAngleSoundPlaying || gameState.isAngleSongPlaying) {
+        if (gameState.isAngleSoundPlaying || gameState.isAngleSongPlaying || gameState.isFVideoPlaying) {
             bgMusic.pause();
             e.preventDefault();
         }

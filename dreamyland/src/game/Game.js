@@ -6,7 +6,7 @@ import { createDuck } from '../components/Duck.js';
 import { createDuckHug, updateDuckHug } from '../components/DuckHug.js';
 import { createParticles } from '../particles/Particles.js';
 import { createPinwheels } from '../particles/Pinwheels.js';
-import { loadAllCharacters } from '../characters/CharacterLoader.js';
+import { loadAllCharacters, loadBiarModel, loadBiabModel } from '../characters/CharacterLoader.js';
 import { updateCharacterInteractions } from '../characters/CharacterInteractions.js';
 import { initAudio } from '../audio/AudioManager.js';
 import { initInput } from '../input/InputHandler.js';
@@ -104,6 +104,57 @@ export function initGame() {
         console.log('Video screen creation error (video file may not exist):', error);
     }
 
+    // Create video screen behind f.glb model (screen 3)
+    let fVideoScreen = null;
+    try {
+        fVideoScreen = createVideoScreen(scene, '/videoo.mp4', {
+            width: 35,
+            height: 20,
+            position: new THREE.Vector3(-143, 25, -45), // Behind f.glb (f.glb is at z: -40)
+            rotation: new THREE.Euler(0, -Math.PI , 0), // Same rotation as f.glb
+            distortionIntensity: 0.02,
+            glitchIntensity: 0.1,
+            emissiveIntensity: 1.5,
+            borderRadius: 0.08
+        });
+    } catch (error) {
+        console.log('F video screen creation error (videoo.mp4 may not exist):', error);
+    }
+
+    // Create video screen above biar.glb model (videoippo)
+    let biarVideoScreen = null;
+    try {
+        biarVideoScreen = createVideoScreen(scene, '/public/playground/videoippo.mp4', {
+            width: 25,
+            height: 17,
+            position: new THREE.Vector3(10, 25, 150), // Above biar.glb (biar is at x: 10, y: 10, z: 150)
+            rotation: new THREE.Euler(0, -Math.PI , 0), // Face forward
+            distortionIntensity: 0.02,
+            glitchIntensity: 0.1,
+            emissiveIntensity: 1.5,
+            borderRadius: 0.08
+        });
+    } catch (error) {
+        console.log('Biar video screen creation error (videoippo.mp4 may not exist):', error);
+    }
+
+    // Create video screen above biab.glb model (videoape)
+    let biabVideoScreen = null;
+    try {
+        biabVideoScreen = createVideoScreen(scene, '/public/playground/videoape.mp4', {
+            width: 25,
+            height: 17,
+            position: new THREE.Vector3(10, 25, 200), // Above biab.glb (biab is at x: 10, y: 10, z: 200)
+            rotation: new THREE.Euler(0, -Math.PI, 0), // Face forward (same as biab)
+            distortionIntensity: 0.02,
+            glitchIntensity: 0.1,
+            emissiveIntensity: 1.5,
+            borderRadius: 0.08
+        });
+    } catch (error) {
+        console.log('Biab video screen creation error (videoape.mp4 may not exist):', error);
+    }
+
     // Store characterModels in gameState so AudioManager can access it
     gameState.characterModels = characterModels;
     
@@ -118,6 +169,10 @@ export function initGame() {
         newCharacterGroup = group;
     });
 
+    // Load biar.glb and biab.glb models at spawn location next to duck
+    loadBiarModel(scene);
+    loadBiabModel(scene);
+
     // Animation loop
     const clock = new THREE.Clock();
     
@@ -126,10 +181,10 @@ export function initGame() {
         const delta = Math.min(clock.getDelta(), 0.1);
         const time = clock.getElapsedTime();
 
-        // Keep background music playing if it should be (but not while ang.mp3 or custom song is playing)
+        // Keep background music playing if it should be (but not while ang.mp3, custom song, or f video is playing)
         // Only try to play if user has interacted (to avoid autoplay errors)
         if (audioData && audioData.bgMusic && gameState.hasUserInteracted) {
-            if (gameState.isMusicPlaying && audioData.bgMusic.paused && !gameState.isAngleSoundPlaying && !gameState.isAngleSongPlaying) {
+            if (gameState.isMusicPlaying && audioData.bgMusic.paused && !gameState.isAngleSoundPlaying && !gameState.isAngleSongPlaying && !gameState.isFVideoPlaying) {
                 audioData.bgMusic.volume = 0.3; // Restore volume
                 audioData.bgMusic.play().catch(() => {
                     // Silently handle play errors (user might not have interacted yet)
@@ -169,6 +224,18 @@ export function initGame() {
         // Update video screen shader
         if (videoScreen) {
             videoScreen.update(time);
+        }
+        // Update f video screen shader (screen 3)
+        if (fVideoScreen) {
+            fVideoScreen.update(time);
+        }
+        // Update biar video screen shader
+        if (biarVideoScreen) {
+            biarVideoScreen.update(time);
+        }
+        // Update biab video screen shader
+        if (biabVideoScreen) {
+            biabVideoScreen.update(time);
         }
 
         // Update camera position

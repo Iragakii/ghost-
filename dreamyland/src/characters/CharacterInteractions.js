@@ -119,6 +119,28 @@ export function updateCharacterInteractions(camera, gameState, luvuGroup, charac
                 }
             }
 
+            // Q notification for f.glb (index 3)
+            if (i === 3 && !char.isInteracting) {
+                const qNotifEl = document.getElementById('f-q-notif');
+                if (qNotifEl) {
+                    if (screenPos.x >= -1 && screenPos.x <= 1 &&
+                        screenPos.y >= -1 && screenPos.y <= 1 &&
+                        screenPos.z < 1 && screenPos.z > -1) {
+                        qNotifEl.style.display = 'block';
+                        qNotifEl.style.left = (x + 60) + 'px';
+                        qNotifEl.style.top = (y - 180) + 'px';
+                        qNotifEl.style.transform = 'translateX(-50%)';
+                    } else {
+                        qNotifEl.style.display = 'none';
+                    }
+                }
+            } else if (i === 3) {
+                const qNotifEl = document.getElementById('f-q-notif');
+                if (qNotifEl) {
+                    qNotifEl.style.display = 'none';
+                }
+            }
+
             if (char.isInteracting && chatEl && i !== 8 && i !== 9) {
                 chatEl.style.display = 'block';
                 chatEl.style.left = x + 'px';
@@ -134,6 +156,12 @@ export function updateCharacterInteractions(camera, gameState, luvuGroup, charac
             if (chatEl) chatEl.style.display = 'none';
             if (i === 5) {
                 const qNotifEl = document.getElementById('angle-q-notif');
+                if (qNotifEl) {
+                    qNotifEl.style.display = 'none';
+                }
+            }
+            if (i === 3) {
+                const qNotifEl = document.getElementById('f-q-notif');
                 if (qNotifEl) {
                     qNotifEl.style.display = 'none';
                 }

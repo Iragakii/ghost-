@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "compress:glb": "gltf-transform optimize"
+    "compress:glb": "gltf-transform optimize",
+    "compress:videos": "powershell -ExecutionPolicy Bypass -File ./compress-videos.ps1"
   },
   "devDependencies": {
     "@gltf-transform/cli": "^4.3.0",
