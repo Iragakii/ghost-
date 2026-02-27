@@ -3,7 +3,9 @@ import * as THREE from 'three';
 export function createScene() {
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0xffb6c1, 0.013);
+    // Enhanced fog for better distance-based visibility (objects fade into fog when far)
+    // FogExp2: color, density (higher = more fog, objects fade faster)
+    scene.fog = new THREE.FogExp2(0xffb6c1, 0.015); // Slightly increased density for better far-object fading
 
     const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 2000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });

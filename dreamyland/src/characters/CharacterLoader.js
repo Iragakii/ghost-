@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { incrementLoaded, forceCompleteLoading } from '../utils/LoadingScreen.js';
 
 const dracoLoader = new DRACOLoader();
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
@@ -10,7 +11,21 @@ const ktx2Loader = new KTX2Loader();
 ktx2Loader.setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.183.0/examples/jsm/libs/basis/');
 
 // Create loading manager
-const loadingManager = new THREE.LoadingManager();
+const loadingManager = new THREE.LoadingManager(
+    // onLoad - called when all assets are loaded
+    () => {
+        // All assets loaded via LoadingManager
+        // Complete loading immediately (scene is already visible)
+        forceCompleteLoading();
+    },
+    // onProgress - can be used for progress tracking
+    undefined,
+    // onError
+    (url) => {
+        console.error('Error loading asset:', url);
+        // Don't block on errors - continue loading
+    }
+);
 
 const gltfLoader = new GLTFLoader(loadingManager);
 gltfLoader.setDRACOLoader(dracoLoader);
@@ -113,6 +128,7 @@ function loadPinkModel(scene, characterModels) {
 
 function loadGLModel(scene, characterModels) {
     gltfLoader.load('/pinklocation/gl.glb', (gltf) => {
+        incrementLoaded();
         const modelGroup = new THREE.Group();
         // Position next to pink characters (to the right of the last pink character at x: 20)
         modelGroup.position.set(40, 19, -250);
@@ -675,9 +691,10 @@ function loadFATModel(scene, characterModels) {
 
 export function loadBiarModel(scene) {
     gltfLoader.load('/playground/biar.glb', (gltf) => {
+        incrementLoaded();
         const modelGroup = new THREE.Group();
-        // Position next to duck at spawn location (duck is at x: 5, z: 5)
-        modelGroup.position.set(10, 10, 150); // Next to duck, slightly to the right
+        // Position next to cactus at spawn location (cactus is at x: 5, z: 5)
+        modelGroup.position.set(10, 10, 150); // Next to cactus, slightly to the right
         modelGroup.rotation.y = -Math.PI / 2; // Face forward
         modelGroup.scale.set(12, 12, 12); // Similar scale to other characters
 
@@ -698,6 +715,7 @@ export function loadBiarModel(scene) {
 
 export function loadBiabModel(scene) {
     gltfLoader.load('/playground/biab.glb', (gltf) => {
+        incrementLoaded();
         const modelGroup = new THREE.Group();
         // Position next to biar.glb (biar is at x: 10, y: 10, z: 250)
         modelGroup.position.set(10, 10, 200); // Next to biar.glb, slightly to the right
@@ -716,6 +734,29 @@ export function loadBiabModel(scene) {
         scene.add(modelGroup);
     }, undefined, (error) => {
         console.error('Error loading biab.glb:', error);
+    });
+}
+
+export function loadIppoacModel(scene) {
+    gltfLoader.load('/playground/ippoac.glb', (gltf) => {
+        const modelGroup = new THREE.Group();
+        // Position next to biar.glb (biar is at x: 10, y: 10, z: 150)
+        modelGroup.position.set(10, 1, 140); // Next to biar.glb, to the right
+        modelGroup.rotation.y = Math.PI / 2; // Face forward (same as biar)
+        
+        // Apply scale to the scene itself, then add to modelGroup
+        gltf.scene.scale.set(12, 12, 12);
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh || child instanceof THREE.SkinnedMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+        modelGroup.add(gltf.scene);
+
+        scene.add(modelGroup);
+    }, undefined, (error) => {
+        console.error('Error loading ippoac.glb:', error);
     });
 }
 

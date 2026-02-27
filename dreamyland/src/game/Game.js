@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { createScene } from '../scenes/Scene.js';
 import { createLuvu } from '../components/Luvu.js';
 import { updateExpressionAnimation } from '../components/LuvuExpressions.js';
-import { createDuck } from '../components/Duck.js';
-import { createDuckHug, updateDuckHug } from '../components/DuckHug.js';
+import { createCactus, updateCactusAnimation } from '../components/Cactus.js';
+import { createIppoac, updateIppoacAnimation } from '../components/Ippoac.js';
 import { createParticles } from '../particles/Particles.js';
 import { createPinwheels } from '../particles/Pinwheels.js';
 import { loadAllCharacters, loadBiarModel, loadBiabModel } from '../characters/CharacterLoader.js';
@@ -11,14 +11,15 @@ import { updateCharacterInteractions } from '../characters/CharacterInteractions
 import { initAudio } from '../audio/AudioManager.js';
 import { initInput } from '../input/InputHandler.js';
 import { createVideoScreen } from '../components/VideoScreen.js';
+import { optimizeAllCharacters, optimizeObjectByDistance, DISTANCE_THRESHOLDS } from '../utils/PerformanceOptimizer.js';
+import { initLoadingScreen, setTotalAssets, incrementLoaded, forceCompleteLoading, onLoadingComplete } from '../utils/LoadingScreen.js';
 
 let scene, camera, renderer;
-let luvuGroup, duckGroup;
+let luvuGroup, cactusGroup, ippoacGroup;
 let particles, pinwheels;
 let characterModels = [];
 let characterTimeouts = [];
 let newCharacterGroup = null;
-let duckHugData = null;
 let audioData = null;
 let videoScreen = null;
 
@@ -31,11 +32,10 @@ const gameState = {
     cameraRotationY: 0,
     cameraRotationX: 0,
     luvuVel: new THREE.Vector3(),
-    duckVel: new THREE.Vector3(),
+    cactusVel: new THREE.Vector3(),
     luvuCanJump: true,
     isHugging: false,
     neckStretch: 1.0,
-    lastDuckWalkTime: 0,
     closestCharIndex: -1,
     isNewCharClose: false,
     currentExpression: 'neutral',
@@ -44,12 +44,16 @@ const gameState = {
     isMusicPlaying: true,
     musicWasPlayingBeforeAngle: false, // Track if music was playing before angle.mp3
     hasUserInteracted: false,
-    terrainUpdateFrame: 0
+    terrainUpdateFrame: 0,
+    isFollowingCactus: false,
+    isFollowingIppoac: false,
+    ippoacAnimationKey: null,
+    ippoacVel: new THREE.Vector3()
 };
 
 // Constants
 const SPEED = 40;
-const SPEED2 = 15;
+const SPEED2 = 30;
 const GRAVITY = 30;
 const JUMP = 15;
 const INTERACTION_DISTANCE = 8;
@@ -61,11 +65,28 @@ const camOffset = new THREE.Vector3(0, 6, 16);
 const camTarget = new THREE.Vector3();
 
 export function initGame() {
-    // Initialize scene
+    // Initialize loading screen first
+    initLoadingScreen();
+    
+    // Count total assets to load
+    // Main characters: 3 (Luvu, Cactus, Ippoac)
+    // Character models: ~20 (from loadAllCharacters)
+    // Video screens: 4 (they load async, but we'll use LoadingManager)
+    // Biar/Biab: 2
+    // Note: LoadingManager will track all GLB files automatically
+    // We'll use a timeout fallback to ensure loading completes
+    setTotalAssets(1); // Will be managed by LoadingManager
+    
+    // Initialize scene IMMEDIATELY (don't wait for models)
+    // This improves LCP by showing the scene right away
     const sceneData = createScene();
     scene = sceneData.scene;
     camera = sceneData.camera;
     renderer = sceneData.renderer;
+    
+    // Start rendering immediately with basic scene (terrain, sky, lights)
+    // This ensures LCP happens as soon as possible
+    renderer.render(scene, camera);
     
     const container = sceneData.container;
     const floorGeo = sceneData.floorGeo;
@@ -75,10 +96,8 @@ export function initGame() {
 
     // Create characters
     luvuGroup = createLuvu(scene);
-    duckGroup = createDuck(scene);
-    
-    // Create duck hug system
-    duckHugData = createDuckHug(scene, duckGroup);
+    cactusGroup = createCactus(scene);
+    ippoacGroup = createIppoac(scene);
 
     // Create particles
     particles = createParticles(scene);
@@ -162,19 +181,30 @@ export function initGame() {
     audioData = initAudio(gameState);
     
     // Initialize input
-    initInput(gameState, luvuGroup, duckGroup, characterModels, characterTimeouts, newCharacterGroup, audioData);
+    initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, characterModels, characterTimeouts, newCharacterGroup, audioData);
 
     // Load characters
     loadAllCharacters(scene, characterModels, characterTimeouts, gameState, audioData).then(group => {
         newCharacterGroup = group;
     });
 
-    // Load biar.glb and biab.glb models at spawn location next to duck
+    // Load biar.glb and biab.glb models at spawn location next to cactus
     loadBiarModel(scene);
     loadBiabModel(scene);
 
-    // Animation loop
+    // Fallback: Force complete loading after 2 seconds if LoadingManager doesn't fire
+    // This ensures the game starts quickly even if some assets fail to load
+    // Scene is already visible, so we can hide loading screen sooner
+    setTimeout(() => {
+        forceCompleteLoading();
+    }, 2000);
+
+    // Start animation loop IMMEDIATELY (don't wait for models)
+    // This ensures the scene is visible right away for better LCP
     const clock = new THREE.Clock();
+    
+    // Start animation loop immediately - scene is already visible
+    animate();
     
     function animate() {
         requestAnimationFrame(animate);
@@ -209,43 +239,109 @@ export function initGame() {
         }
 
         // Update camera
-        const camAngle = Math.atan2(camera.position.x - luvuGroup.position.x, camera.position.z - luvuGroup.position.z);
+        // Calculate camera angle based on which character we're following
+        let targetGroup = luvuGroup;
+        if (gameState.isFollowingIppoac) {
+            targetGroup = ippoacGroup;
+        } else if (gameState.isFollowingCactus) {
+            targetGroup = cactusGroup;
+        }
+        const camAngle = Math.atan2(camera.position.x - targetGroup.position.x, camera.position.z - targetGroup.position.z);
         
-        // Update duck
-        updateDuck(delta, time, camAngle, getTerrainY, gameState, duckGroup, audioData);
+        // Update cactus
+        updateCactus(delta, time, camAngle, getTerrainY, gameState, cactusGroup);
         
-        // Update luvu (this also updates isHugging state)
-        updateLuvu(delta, time, camAngle, getTerrainY, gameState, particles, luvuGroup, duckGroup, audioData);
+        // Update ippoac only when following ippoac (user is controlling it)
+        if (gameState.isFollowingIppoac) {
+            updateIppoac(delta, time, camAngle, getTerrainY, gameState, ippoacGroup);
+        } else {
+            // When not following ippoac, stop all movement and only update Y position for terrain
+            if (ippoacGroup) {
+                // Reset velocity to prevent any movement
+                gameState.ippoacVel.x = 0;
+                gameState.ippoacVel.z = 0;
+                // Only update Y position for terrain (keep it on ground)
+                ippoacGroup.position.y = getTerrainY(ippoacGroup.position.x, ippoacGroup.position.z, time) + 1.2;
+            }
+        }
+        
+        // Update luvu
+        updateLuvu(delta, time, camAngle, getTerrainY, gameState, particles, luvuGroup, cactusGroup, audioData);
         
         // Update particles
         particles.update(delta, time);
         pinwheels.update(delta, time);
 
-        // Update video screen shader
-        if (videoScreen) {
+        // Update video screen shader (only if not skipped for performance)
+        if (videoScreen && !videoScreen.skipUpdate) {
             videoScreen.update(time);
         }
         // Update f video screen shader (screen 3)
-        if (fVideoScreen) {
+        if (fVideoScreen && !fVideoScreen.skipUpdate) {
             fVideoScreen.update(time);
         }
         // Update biar video screen shader
-        if (biarVideoScreen) {
+        if (biarVideoScreen && !biarVideoScreen.skipUpdate) {
             biarVideoScreen.update(time);
         }
         // Update biab video screen shader
-        if (biabVideoScreen) {
+        if (biabVideoScreen && !biabVideoScreen.skipUpdate) {
             biabVideoScreen.update(time);
         }
 
         // Update camera position
         updateCamera(delta, gameState, pinkLight, blueLight);
 
-        // Update character interactions
-        updateCharacterInteractions(camera, gameState, luvuGroup, characterModels, characterTimeouts, newCharacterGroup, time);
+        // Optimize all objects based on distance (freeze animations, disable shadows when far)
+        let targetPosition = luvuGroup.position;
+        if (gameState.isFollowingIppoac) {
+            targetPosition = ippoacGroup.position;
+        } else if (gameState.isFollowingCactus) {
+            targetPosition = cactusGroup.position;
+        }
+        
+        // Optimize all character models
+        optimizeAllCharacters(characterModels, targetPosition, scene);
+        
+        // Optimize main characters (cactus, ippoac) if they exist
+        if (cactusGroup) {
+            const cactusPos = new THREE.Vector3();
+            cactusGroup.getWorldPosition(cactusPos);
+            const cactusDistance = targetPosition.distanceTo(cactusPos);
+            optimizeObjectByDistance(cactusGroup, cactusDistance, targetPosition);
+        }
+        if (ippoacGroup) {
+            const ippoacPos = new THREE.Vector3();
+            ippoacGroup.getWorldPosition(ippoacPos);
+            const ippoacDistance = targetPosition.distanceTo(ippoacPos);
+            optimizeObjectByDistance(ippoacGroup, ippoacDistance, targetPosition);
+        }
+        
+        // Optimize video screens (disable updates when far)
+        const optimizeVideoScreen = (videoScreenObj) => {
+            if (videoScreenObj && videoScreenObj.mesh) {
+                const screenPos = new THREE.Vector3();
+                videoScreenObj.mesh.getWorldPosition(screenPos);
+                const screenDistance = targetPosition.distanceTo(screenPos);
+                if (screenDistance > DISTANCE_THRESHOLDS.FREEZE_ANIMATION) {
+                    // Don't update video shader when far (saves GPU)
+                    videoScreenObj.skipUpdate = true;
+                } else {
+                    videoScreenObj.skipUpdate = false;
+                }
+                // Disable shadows when far
+                optimizeObjectByDistance(videoScreenObj.mesh, screenDistance, targetPosition);
+            }
+        };
+        
+        if (videoScreen) optimizeVideoScreen(videoScreen);
+        if (fVideoScreen) optimizeVideoScreen(fVideoScreen);
+        if (biarVideoScreen) optimizeVideoScreen(biarVideoScreen);
+        if (biabVideoScreen) optimizeVideoScreen(biabVideoScreen);
 
-        // Update duck hug interaction
-        updateDuckHug(delta, gameState.isHugging, luvuGroup, duckGroup, duckHugData, scene);
+        // Update character interactions
+        updateCharacterInteractions(camera, gameState, luvuGroup, characterModels, characterTimeouts, newCharacterGroup, cactusGroup, ippoacGroup, time);
+
 
         renderer.render(scene, camera);
     }
@@ -264,7 +360,7 @@ export function initGame() {
     }, { passive: true });
 }
 
-function updateDuck(delta, time, camAngle, getTerrainY, state, duckGroup, audioData) {
+function updateCactus(delta, time, camAngle, getTerrainY, state, cactusGroup) {
     const dDir = new THREE.Vector3();
     if (state.keys['arrowup']) dDir.z -= 1;
     if (state.keys['arrowdown']) dDir.z += 1;
@@ -272,68 +368,74 @@ function updateDuck(delta, time, camAngle, getTerrainY, state, duckGroup, audioD
     if (state.keys['arrowright']) dDir.x += 1;
     dDir.normalize();
 
-    const userData = duckGroup.userData;
+    const isRunning = dDir.lengthSq() > 0;
     
-    let lastDuckWalkTime = state.lastDuckWalkTime || 0;
+    // Update animation based on movement
+    updateCactusAnimation(cactusGroup, delta, isRunning);
     
-    if (dDir.lengthSq() > 0) {
+    if (isRunning) {
         const mx = dDir.x * Math.cos(camAngle) + dDir.z * Math.sin(camAngle);
         const mz = -dDir.x * Math.sin(camAngle) + dDir.z * Math.cos(camAngle);
-        state.duckVel.x = mx * SPEED2;
-        state.duckVel.z = mz * SPEED2;
-        duckGroup.rotation.y = lerpAngle(duckGroup.rotation.y, Math.atan2(state.duckVel.x, state.duckVel.z), 10 * delta);
-        
-        // Duck walking animation
-        if (userData && userData.bodyGroup) {
-            userData.bodyGroup.rotation.z = Math.sin(time * 15) * 0.1;
-        }
-        if (userData && userData.leftLeg) {
-            userData.leftLeg.rotation.x = Math.max(0, Math.sin(time * 15)) * 0.3;
-        }
-        if (userData && userData.rightLeg) {
-            userData.rightLeg.rotation.x = Math.max(0, Math.sin(time * 15 + Math.PI)) * 0.3;
-        }
-        
-        // Play duck walk sound
-        if (time - lastDuckWalkTime > 0.35) {
-            if (audioData && audioData.playDuckWalkSound) {
-                audioData.playDuckWalkSound();
-            }
-            lastDuckWalkTime = time;
-            state.lastDuckWalkTime = time;
-        }
+        state.cactusVel.x = mx * SPEED2;
+        state.cactusVel.z = mz * SPEED2;
+        // Calculate target rotation - face the direction of movement, rotated 90 degrees to the left
+        const targetRot = Math.atan2(state.cactusVel.x, state.cactusVel.z) - Math.PI / 2;
+        cactusGroup.rotation.y = lerpAngle(cactusGroup.rotation.y, targetRot, 10 * delta);
     } else {
-        state.duckVel.x *= (1 - 10 * delta);
-        state.duckVel.z *= (1 - 10 * delta);
-        
-        if (userData && userData.bodyGroup) {
-            userData.bodyGroup.rotation.z = 0;
-        }
-        if (userData && userData.leftLeg) {
-            userData.leftLeg.rotation.x = 0;
-        }
-        if (userData && userData.rightLeg) {
-            userData.rightLeg.rotation.x = 0;
-        }
+        state.cactusVel.x *= (1 - 10 * delta);
+        state.cactusVel.z *= (1 - 10 * delta);
     }
     
-    duckGroup.position.x += state.duckVel.x * delta;
-    duckGroup.position.z += state.duckVel.z * delta;
-    duckGroup.position.y = getTerrainY(duckGroup.position.x, duckGroup.position.z, time) + 1.2;
-    
-    // Neck stretch for Enter key
-    if (userData && userData.neckGroup) {
-        state.neckStretch = THREE.MathUtils.lerp(state.neckStretch, state.keys['enter'] ? 4.5 : 1.0, 8 * delta);
-        userData.neckGroup.scale.y = state.neckStretch;
-    }
+    cactusGroup.position.x += state.cactusVel.x * delta;
+    cactusGroup.position.z += state.cactusVel.z * delta;
+    cactusGroup.position.y = getTerrainY(cactusGroup.position.x, cactusGroup.position.z, time) + 1.2;
 }
 
-function updateLuvu(delta, time, camAngle, getTerrainY, state, particles, luvuGroup, duckGroup, audioData) {
+function updateIppoac(delta, time, camAngle, getTerrainY, state, ippoacGroup) {
+    const dDir = new THREE.Vector3();
+    if (state.keys['w']) dDir.z -= 1;
+    if (state.keys['s']) dDir.z += 1;
+    if (state.keys['a']) dDir.x -= 1;
+    if (state.keys['d']) dDir.x += 1;
+    dDir.normalize();
+
+    const isRunning = dDir.lengthSq() > 0;
+    
+    // Get animation key (j or k)
+    let animationKey = null;
+    if (state.keys['j']) animationKey = 'j';
+    else if (state.keys['k']) animationKey = 'k';
+    
+    // Update animation based on movement and keys
+    updateIppoacAnimation(ippoacGroup, delta, isRunning, animationKey);
+    
+    if (isRunning) {
+        const mx = dDir.x * Math.cos(camAngle) + dDir.z * Math.sin(camAngle);
+        const mz = -dDir.x * Math.sin(camAngle) + dDir.z * Math.cos(camAngle);
+        state.ippoacVel.x = mx * SPEED2;
+        state.ippoacVel.z = mz * SPEED2;
+        // Calculate target rotation - face the direction of movement, rotated 90 degrees to the left
+        const targetRot = Math.atan2(state.ippoacVel.x, state.ippoacVel.z) - Math.PI / 2;
+        ippoacGroup.rotation.y = lerpAngle(ippoacGroup.rotation.y, targetRot, 10 * delta);
+    } else {
+        state.ippoacVel.x *= (1 - 10 * delta);
+        state.ippoacVel.z *= (1 - 10 * delta);
+    }
+    
+    ippoacGroup.position.x += state.ippoacVel.x * delta;
+    ippoacGroup.position.z += state.ippoacVel.z * delta;
+    ippoacGroup.position.y = getTerrainY(ippoacGroup.position.x, ippoacGroup.position.z, time) + 1.2;
+}
+
+function updateLuvu(delta, time, camAngle, getTerrainY, state, particles, luvuGroup, cactusGroup, audioData) {
+    // Only allow Luvu movement when NOT following ippoac
     const gDir = new THREE.Vector3();
-    if (state.keys['w']) gDir.z -= 1;
-    if (state.keys['s']) gDir.z += 1;
-    if (state.keys['a']) gDir.x -= 1;
-    if (state.keys['d']) gDir.x += 1;
+    if (!state.isFollowingIppoac) {
+        if (state.keys['w']) gDir.z -= 1;
+        if (state.keys['s']) gDir.z += 1;
+        if (state.keys['a']) gDir.x -= 1;
+        if (state.keys['d']) gDir.x += 1;
+    }
     gDir.normalize();
     const gMoving = gDir.lengthSq() > 0;
 
@@ -342,8 +444,8 @@ function updateLuvu(delta, time, camAngle, getTerrainY, state, particles, luvuGr
         particles.spawnFlowerParticles(luvuGroup.position, moveVel);
     }
 
-    const dist = luvuGroup.position.distanceTo(duckGroup.position);
-    state.isHugging = dist < 5.0 && !gMoving;
+    const dist = luvuGroup.position.distanceTo(cactusGroup.position);
+    state.isHugging = false; // Disable hugging for cactus
 
     const userData = luvuGroup.userData;
     if (!userData || !userData.bodyMesh) {
@@ -644,20 +746,36 @@ function updateLuvu(delta, time, camAngle, getTerrainY, state, particles, luvuGr
 }
 
 function updateCamera(delta, state, pinkLight, blueLight) {
-    const rotatedOffset = camOffset.clone();
+    // Choose target group based on follow state
+    let targetGroup = luvuGroup;
+    if (state.isFollowingIppoac) {
+        targetGroup = ippoacGroup;
+    } else if (state.isFollowingCactus) {
+        targetGroup = cactusGroup;
+    }
+    
+    // Use different camera offset for cactus and ippoac
+    let currentOffset = camOffset;  // Default: Luvu offset
+    if (state.isFollowingIppoac) {
+        currentOffset = new THREE.Vector3(0, 30, 25);  // Ippoac: higher (15) and farther (20)
+    } else if (state.isFollowingCactus) {
+        currentOffset = new THREE.Vector3(0, 15, 20);  // Cactus: higher (15) and farther (20)
+    }
+    
+    const rotatedOffset = currentOffset.clone();
     rotatedOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), state.cameraRotationY);
     
     const rightVector = new THREE.Vector3(1, 0, 0);
     rightVector.applyAxisAngle(new THREE.Vector3(0, 1, 0), state.cameraRotationY);
     rotatedOffset.applyAxisAngle(rightVector, state.cameraRotationX);
-    rotatedOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), luvuGroup.rotation.y * 0.1);
+    rotatedOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), targetGroup.rotation.y * 0.1);
 
-    camera.position.lerp(luvuGroup.position.clone().add(rotatedOffset), 5 * delta);
-    camTarget.copy(luvuGroup.position).add(new THREE.Vector3(0, 2, 0));
+    camera.position.lerp(targetGroup.position.clone().add(rotatedOffset), 5 * delta);
+    camTarget.copy(targetGroup.position).add(new THREE.Vector3(0, 2, 0));
     camera.lookAt(camTarget);
     
-    pinkLight.position.set(luvuGroup.position.x - 3, luvuGroup.position.y + 3, luvuGroup.position.z + 3);
-    blueLight.position.set(luvuGroup.position.x + 3, luvuGroup.position.y + 3, luvuGroup.position.z - 3);
+    pinkLight.position.set(targetGroup.position.x - 3, targetGroup.position.y + 3, targetGroup.position.z + 3);
+    blueLight.position.set(targetGroup.position.x + 3, targetGroup.position.y + 3, targetGroup.position.z - 3);
 }
 
 

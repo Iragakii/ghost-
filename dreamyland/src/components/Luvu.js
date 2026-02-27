@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { incrementLoaded } from '../utils/LoadingScreen.js';
 
 const dracoLoader = new DRACOLoader();
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
@@ -28,6 +29,7 @@ export function createLuvu(scene) {
     let scarSilk = null;
 
     gltfLoader.load('/luvu.glb', (gltf) => {
+        incrementLoaded();
         // Clone the scene to add to our group
         const model = gltf.scene.clone();
         

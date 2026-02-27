@@ -28,6 +28,9 @@ npx @gltf-transform/cli optimize public/playground/biar.glb public/playground/bi
 
 # Compress biab.glb
 npx @gltf-transform/cli optimize public/playground/biab.glb public/playground/biab.glb --compress draco --texture-compress webp
+npx @gltf-transform/cli optimize public/playground/ippoac.glb public/playground/ippoac.glb --compress draco --texture-compress webp
+npx @gltf-transform/cli optimize public/playground/monkeytemp.glb public/playground/monkeytemp.glb --compress draco --texture-compress webp
+npx @gltf-transform/cli optimize public/playground/cactusac.glb public/playground/cactusac.glb --compress draco --texture-compress webp
 ```
 
 ## Note:

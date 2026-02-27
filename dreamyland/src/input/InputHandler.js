@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { setExpression } from '../components/LuvuExpressions.js';
 import { updateMusicButton } from '../audio/AudioManager.js';
 
@@ -9,18 +10,21 @@ let fatSound = null;
 let lmSound = null;
 let fVideoSound = null;
 
-export function initInput(gameState, luvuGroup, duckGroup, characterModels, characterTimeouts, newCharacterGroup, audioData) {
-    const { bgMusic } = audioData;
+export function initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, characterModels, characterTimeouts, newCharacterGroup, audioData) {
+    const { bgMusic } = audioData || {};
 
     // Keyboard input
     window.addEventListener('keydown', e => {
         gameState.hasUserInteracted = true; // Mark user interaction
         gameState.keys[e.key.toLowerCase()] = true;
         
-        // Expression keys: J = cry (with tears), K = angry, L = neutral/sad (-.-)
-        if (e.key === 'j') setExpression(luvuGroup, 'cry', gameState);
-        if (e.key === 'k') setExpression(luvuGroup, 'angry', gameState);
-        if (e.key === 'l') setExpression(luvuGroup, 'neutral', gameState);
+            // Expression keys: J = cry (with tears), K = angry, L = neutral/sad (-.-)
+            // Only apply to Luvu if not following ippoac (J and K control ippoac animations when following ippoac)
+            if (!gameState.isFollowingIppoac) {
+                if (e.key === 'j') setExpression(luvuGroup, 'cry', gameState);
+                if (e.key === 'k') setExpression(luvuGroup, 'angry', gameState);
+                if (e.key === 'l') setExpression(luvuGroup, 'neutral', gameState);
+            }
 
         // Handle F key for character interaction
         if (e.key.toLowerCase() === 'f') {
@@ -41,7 +45,7 @@ export function initInput(gameState, luvuGroup, duckGroup, characterModels, char
                         }
 
                         // Preserve music playing state before pausing (store in gameState so it's accessible)
-                        gameState.musicWasPlayingBeforeAngle = gameState.isMusicPlaying || !bgMusic.paused;
+                        gameState.musicWasPlayingBeforeAngle = gameState.isMusicPlaying || (bgMusic && !bgMusic.paused);
                         
                         if (!angleSound.hasEndedListener) {
                             angleSound.addEventListener('ended', () => {
@@ -72,7 +76,7 @@ export function initInput(gameState, luvuGroup, duckGroup, characterModels, char
 
                         // Stop bg music when angle.mp3 starts (but preserve playing state)
                         // Update music state each time (so ended handler uses current state)
-                        gameState.musicWasPlayingBeforeAngle = gameState.isMusicPlaying || !bgMusic.paused;
+                        gameState.musicWasPlayingBeforeAngle = gameState.isMusicPlaying || (bgMusic && !bgMusic.paused);
                         if (bgMusic) {
                             // Don't change isMusicPlaying - we want it to resume after
                             bgMusic.pause();
@@ -157,8 +161,119 @@ export function initInput(gameState, luvuGroup, duckGroup, characterModels, char
             }
         }
 
-        // Handle Q key for f.glb (index 3) - play video sound
+        // Handle Q key
         if (e.key.toLowerCase() === 'q') {
+            // Handle Q key for Ippoac - switch back to following Luvu (when currently following ippoac)
+            if (gameState.isFollowingIppoac && ippoacGroup) {
+                const luvuPos = luvuGroup.position.clone();
+                const distanceToLuvu = ippoacGroup.position.distanceTo(luvuPos);
+                
+                if (distanceToLuvu < 16) { // INTERACTION_DISTANCE * 2 (larger range to switch back)
+                    // Switch back to following Luvu
+                    gameState.isFollowingIppoac = false;
+                    console.log('Switched camera back to Luvu from Ippoac');
+                    
+                    // Hide Q notification
+                    const luvuQNotifEl = document.getElementById('luvu-q-notif');
+                    if (luvuQNotifEl) {
+                        luvuQNotifEl.style.display = 'none';
+                    }
+                    
+                    return; // Exit early to prevent other handlers from running
+                }
+            }
+
+            // Handle Q key for cactus -> ippoac (when currently following cactus and close to ippoac)
+            if (gameState.isFollowingCactus && cactusGroup && ippoacGroup) {
+                const cactusPos = new THREE.Vector3();
+                cactusGroup.getWorldPosition(cactusPos);
+                const ippoacPos = new THREE.Vector3();
+                ippoacGroup.getWorldPosition(ippoacPos);
+                const distanceCactusToIppoac = cactusPos.distanceTo(ippoacPos);
+                
+                if (distanceCactusToIppoac < 8) { // INTERACTION_DISTANCE
+                    // Switch camera follow from cactus to ippoac
+                    gameState.isFollowingCactus = false;
+                    gameState.isFollowingIppoac = true;
+                    console.log('Switched camera from cactus to Ippoac');
+                    
+                    // Hide Q notifications for cactus and ippoac
+                    const cactusQNotifEl = document.getElementById('cactus-q-notif');
+                    if (cactusQNotifEl) {
+                        cactusQNotifEl.style.display = 'none';
+                    }
+                    const ippoacQNotifEl = document.getElementById('ippoac-q-notif');
+                    if (ippoacQNotifEl) {
+                        ippoacQNotifEl.style.display = 'none';
+                    }
+                    
+                    return; // Exit early to prevent other handlers from running
+                }
+            }
+            
+            // Handle Q key for Ippoac - toggle camera follow (when NOT following ippoac)
+            if (!gameState.isFollowingIppoac && !gameState.isFollowingCactus && ippoacGroup) {
+                const ippoacPos = new THREE.Vector3();
+                ippoacGroup.getWorldPosition(ippoacPos);
+                const distanceToIppoac = luvuGroup.position.distanceTo(ippoacPos);
+                
+                if (distanceToIppoac < 8) { // INTERACTION_DISTANCE
+                    // Toggle camera follow to ippoac
+                    gameState.isFollowingIppoac = true;
+                    console.log('Toggled camera follow to ippoac:', gameState.isFollowingIppoac);
+                    
+                    // Hide Q notification
+                    const ippoacQNotifEl = document.getElementById('ippoac-q-notif');
+                    if (ippoacQNotifEl) {
+                        ippoacQNotifEl.style.display = 'none';
+                    }
+                    
+                    return; // Exit early to prevent other handlers from running
+                }
+            }
+            
+            // Handle Q key for Luvu - switch back to following Luvu (when currently following cactus)
+            if (gameState.isFollowingCactus && cactusGroup) {
+                const luvuPos = luvuGroup.position.clone();
+                const distanceToLuvu = cactusGroup.position.distanceTo(luvuPos);
+                
+                if (distanceToLuvu < 16) { // INTERACTION_DISTANCE * 2 (larger range to switch back)
+                    // Switch back to following Luvu
+                    gameState.isFollowingCactus = false;
+                    console.log('Switched camera back to Luvu');
+                    
+                    // Hide Q notification
+                    const luvuQNotifEl = document.getElementById('luvu-q-notif');
+                    if (luvuQNotifEl) {
+                        luvuQNotifEl.style.display = 'none';
+                    }
+                    
+                    return; // Exit early to prevent other handlers from running
+                }
+            }
+            
+            // Handle Q key for cactus - toggle camera follow (when NOT following cactus)
+            if (!gameState.isFollowingCactus && cactusGroup) {
+                const cactusPos = new THREE.Vector3();
+                cactusGroup.getWorldPosition(cactusPos);
+                const distanceToCactus = luvuGroup.position.distanceTo(cactusPos);
+                
+                if (distanceToCactus < 8) { // INTERACTION_DISTANCE
+                    // Toggle camera follow to cactus
+                    gameState.isFollowingCactus = true;
+                    console.log('Toggled camera follow to cactus:', gameState.isFollowingCactus);
+                    
+                    // Hide Q notification
+                    const cactusQNotifEl = document.getElementById('cactus-q-notif');
+                    if (cactusQNotifEl) {
+                        cactusQNotifEl.style.display = 'none';
+                    }
+                    
+                    return; // Exit early to prevent other handlers from running
+                }
+            }
+            
+            // Handle Q key for f.glb (index 3) - play video sound
             if (gameState.closestCharIndex === 3) {
                 const char = characterModels[3];
                 if (char) {
@@ -199,7 +314,7 @@ export function initInput(gameState, luvuGroup, duckGroup, characterModels, char
                         qNotifEl.style.display = 'none';
                     }
                 }
-                return; // Exit early to prevent angle.glb handler from running
+                return; // Exit early to prevent other handlers from running
             }
         }
 
@@ -277,7 +392,8 @@ export function initInput(gameState, luvuGroup, duckGroup, characterModels, char
 
     window.addEventListener('keyup', e => {
         gameState.keys[e.key.toLowerCase()] = false;
-        if (['j', 'k', 'l'].includes(e.key.toLowerCase())) {
+        // Only reset Luvu expressions if not following ippoac (J and K control ippoac animations when following ippoac)
+        if (!gameState.isFollowingIppoac && ['j', 'k', 'l'].includes(e.key.toLowerCase())) {
             setExpression(luvuGroup, 'neutral', gameState);
         }
     });

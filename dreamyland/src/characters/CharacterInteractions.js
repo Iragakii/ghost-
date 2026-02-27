@@ -2,6 +2,48 @@ import * as THREE from 'three';
 
 const INTERACTION_DISTANCE = 8;
 
+// Cache DOM element references to reduce getElementById calls (INP optimization)
+const domCache = {
+    cactusQNotif: null,
+    luvuQNotif: null,
+    ippoacQNotif: null,
+    initialized: false
+};
+
+function getCachedElement(id, cacheKey) {
+    if (!domCache.initialized) {
+        domCache.cactusQNotif = document.getElementById('cactus-q-notif');
+        domCache.luvuQNotif = document.getElementById('luvu-q-notif');
+        domCache.ippoacQNotif = document.getElementById('ippoac-q-notif');
+        domCache.initialized = true;
+    }
+    return domCache[cacheKey];
+}
+
+// Batch DOM updates to reduce layout thrashing (INP optimization)
+let pendingStyleUpdates = new Map();
+let styleUpdateRafId = null;
+
+function batchStyleUpdate(element, styles) {
+    if (!element) return;
+    
+    const key = element;
+    if (!pendingStyleUpdates.has(key)) {
+        pendingStyleUpdates.set(key, {});
+    }
+    Object.assign(pendingStyleUpdates.get(key), styles);
+    
+    if (styleUpdateRafId === null) {
+        styleUpdateRafId = requestAnimationFrame(() => {
+            pendingStyleUpdates.forEach((styles, element) => {
+                Object.assign(element.style, styles);
+            });
+            pendingStyleUpdates.clear();
+            styleUpdateRafId = null;
+        });
+    }
+}
+
 // Character messages
 const newCharMessages = [
     "You should Do my prompt better .........",
@@ -52,7 +94,7 @@ function getCharId(index) {
     return charMap[index] || `char${index + 1}`;
 }
 
-export function updateCharacterInteractions(camera, gameState, luvuGroup, characterModels, characterTimeouts, newCharacterGroup, time) {
+export function updateCharacterInteractions(camera, gameState, luvuGroup, characterModels, characterTimeouts, newCharacterGroup, cactusGroup, ippoacGroup, time) {
     gameState.closestCharIndex = -1;
     let minDistance = INTERACTION_DISTANCE;
 
@@ -198,6 +240,204 @@ export function updateCharacterInteractions(camera, gameState, luvuGroup, charac
                         characterTimeouts[i] = null;
                     }
                 }
+            }
+        }
+    }
+
+    // Cactus Q notification (show when NOT following cactus, and either Luvu or ippoac is close)
+    const cactusQNotifEl = getCachedElement('cactus-q-notif', 'cactusQNotif');
+    if (cactusGroup && !gameState.isFollowingCactus && cactusQNotifEl) {
+        const cactusPos = new THREE.Vector3();
+        cactusGroup.getWorldPosition(cactusPos);
+        const distanceFromLuvu = luvuGroup.position.distanceTo(cactusPos);
+        let distanceFromIppoac = Infinity;
+        if (ippoacGroup) {
+            const ippoacPos = new THREE.Vector3();
+            ippoacGroup.getWorldPosition(ippoacPos);
+            distanceFromIppoac = ippoacPos.distanceTo(cactusPos);
+        }
+        
+        // Show notification if:
+        // - Luvu is close (and not following ippoac), OR
+        // - Ippoac is close (regardless of follow state, since we want to show it when ippoac approaches)
+        const isClose = (!gameState.isFollowingIppoac && distanceFromLuvu < INTERACTION_DISTANCE) || 
+                        (distanceFromIppoac < INTERACTION_DISTANCE);
+        
+        if (isClose) {
+            // Update camera matrix before projecting
+            camera.updateMatrixWorld();
+            
+            // Position notification above cactus head
+            const headPos = cactusPos.clone();
+            headPos.y += 9; // Above head
+            const screenPos = headPos.clone().project(camera);
+            
+            if (screenPos.x >= -1 && screenPos.x <= 1 &&
+                screenPos.y >= -1 && screenPos.y <= 1 &&
+                screenPos.z < 1 && screenPos.z > -1) {
+                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+                
+                // Batch style updates for better INP
+                batchStyleUpdate(cactusQNotifEl, {
+                    display: 'block',
+                    left: x + 'px',
+                    top: (y - 40) + 'px',
+                    transform: 'translateX(-50%)'
+                });
+            } else {
+                batchStyleUpdate(cactusQNotifEl, { display: 'none' });
+            }
+        } else {
+            batchStyleUpdate(cactusQNotifEl, { display: 'none' });
+        }
+    } else if (cactusQNotifEl && gameState.isFollowingCactus) {
+        // Hide when following cactus
+        batchStyleUpdate(cactusQNotifEl, { display: 'none' });
+    }
+    
+    // Ippoac Q notification (show when NOT following ippoac, and either Luvu or cactus is close)
+    const qNotifEl = getCachedElement('ippoac-q-notif', 'ippoacQNotif');
+    if (ippoacGroup && !gameState.isFollowingIppoac && qNotifEl) {
+        const ippoacPos = new THREE.Vector3();
+        ippoacGroup.getWorldPosition(ippoacPos);
+        
+        // Check distance from both Luvu and cactus
+        const distanceFromLuvu = luvuGroup.position.distanceTo(ippoacPos);
+        let distanceFromCactus = Infinity;
+        if (cactusGroup) {
+            const cactusPos = new THREE.Vector3();
+            cactusGroup.getWorldPosition(cactusPos);
+            distanceFromCactus = cactusPos.distanceTo(ippoacPos);
+        }
+        
+        // Show notification if either Luvu or cactus is close
+        const isClose = distanceFromLuvu < INTERACTION_DISTANCE || distanceFromCactus < INTERACTION_DISTANCE;
+        
+        if (isClose) {
+            // Update camera matrix before projecting
+            camera.updateMatrixWorld();
+            
+            // Position notification above ippoac head
+            const headPos = ippoacPos.clone();
+            headPos.y += 9; // Above head
+            const screenPos = headPos.clone().project(camera);
+            
+            if (screenPos.x >= -1 && screenPos.x <= 1 &&
+                screenPos.y >= -1 && screenPos.y <= 1 &&
+                screenPos.z < 1 && screenPos.z > -1) {
+                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+                
+                // Batch style updates for better INP
+                batchStyleUpdate(qNotifEl, {
+                    display: 'block',
+                    left: x + 'px',
+                    top: (y - 40) + 'px',
+                    transform: 'translateX(-50%)'
+                });
+            } else {
+                batchStyleUpdate(qNotifEl, { display: 'none' });
+            }
+        } else {
+            batchStyleUpdate(qNotifEl, { display: 'none' });
+        }
+    } else if (qNotifEl) {
+        // Hide ippoac Q notification when following ippoac or if group doesn't exist
+        batchStyleUpdate(qNotifEl, { display: 'none' });
+    }
+    
+    // Hide cactus Q notification only when following cactus (not ippoac, so we can switch from ippoac to cactus)
+    if (gameState.isFollowingCactus) {
+        const cactusQNotifEl = getCachedElement('cactus-q-notif', 'cactusQNotif');
+        if (cactusQNotifEl) {
+            batchStyleUpdate(cactusQNotifEl, { display: 'none' });
+        }
+    }
+
+    // Luvu Q notification (show when following cactus or ippoac, to switch back)
+    if (gameState.isFollowingCactus || gameState.isFollowingIppoac) {
+        const luvuPos = luvuGroup.position.clone();
+        let distanceToLuvu = Infinity;
+        
+        if (gameState.isFollowingCactus && cactusGroup) {
+            distanceToLuvu = cactusGroup.position.distanceTo(luvuPos);
+        } else if (gameState.isFollowingIppoac && ippoacGroup) {
+            const ippoacPos = new THREE.Vector3();
+            ippoacGroup.getWorldPosition(ippoacPos);
+            distanceToLuvu = ippoacPos.distanceTo(luvuPos);
+        }
+        
+        const qNotifEl = getCachedElement('luvu-q-notif', 'luvuQNotif');
+        if (qNotifEl) {
+            // Show notification when close to Luvu (within interaction distance)
+            if (distanceToLuvu < INTERACTION_DISTANCE * 2) {
+                // Position notification above Luvu head
+                const headPos = luvuPos.clone();
+                headPos.y += 3; // Above head
+                const screenPos = headPos.clone().project(camera);
+                
+                if (screenPos.x >= -1 && screenPos.x <= 1 &&
+                    screenPos.y >= -1 && screenPos.y <= 1 &&
+                    screenPos.z < 1 && screenPos.z > -1) {
+                    const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                    const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+                    
+                    // Batch style updates for better INP
+                    batchStyleUpdate(qNotifEl, {
+                        display: 'block',
+                        left: x + 'px',
+                        top: (y - 40) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                } else {
+                    batchStyleUpdate(qNotifEl, { display: 'none' });
+                }
+            } else {
+                batchStyleUpdate(qNotifEl, { display: 'none' });
+            }
+        }
+    } else {
+        // Show Luvu Q notification when ippoac is near (and not following anyone)
+        if (ippoacGroup && !gameState.isFollowingIppoac && !gameState.isFollowingCactus) {
+            const luvuPos = luvuGroup.position.clone();
+            const ippoacPos = new THREE.Vector3();
+            ippoacGroup.getWorldPosition(ippoacPos);
+            const distanceFromIppoac = ippoacPos.distanceTo(luvuPos);
+            
+            const qNotifEl = getCachedElement('luvu-q-notif', 'luvuQNotif');
+            if (qNotifEl) {
+                if (distanceFromIppoac < INTERACTION_DISTANCE) {
+                    // Position notification above Luvu head
+                    const headPos = luvuPos.clone();
+                    headPos.y += 3; // Above head
+                    const screenPos = headPos.clone().project(camera);
+                    
+                    if (screenPos.x >= -1 && screenPos.x <= 1 &&
+                        screenPos.y >= -1 && screenPos.y <= 1 &&
+                        screenPos.z < 1 && screenPos.z > -1) {
+                        const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                        const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+                        
+                        // Batch style updates for better INP
+                        batchStyleUpdate(qNotifEl, {
+                            display: 'block',
+                            left: x + 'px',
+                            top: (y - 40) + 'px',
+                            transform: 'translateX(-50%)'
+                        });
+                    } else {
+                        batchStyleUpdate(qNotifEl, { display: 'none' });
+                    }
+                } else {
+                    batchStyleUpdate(qNotifEl, { display: 'none' });
+                }
+            }
+        } else {
+            // Hide Luvu Q notification when not following cactus/ippoac and ippoac not near
+            const qNotifEl = getCachedElement('luvu-q-notif', 'luvuQNotif');
+            if (qNotifEl) {
+                batchStyleUpdate(qNotifEl, { display: 'none' });
             }
         }
     }
