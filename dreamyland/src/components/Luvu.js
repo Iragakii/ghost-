@@ -15,7 +15,7 @@ export function createLuvu(scene) {
     const luvuGroup = new THREE.Group();
     // Make the model bigger
     luvuGroup.scale.set(5, 5, 5);
-    luvuGroup.position.set(0, 20, 0);
+    luvuGroup.position.set(220, 20, 0);
     scene.add(luvuGroup);
 
     // Calculate bottom offset (will be set after model loads)

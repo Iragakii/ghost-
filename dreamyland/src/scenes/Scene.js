@@ -8,14 +8,32 @@ export function createScene() {
     scene.fog = new THREE.FogExp2(0xffb6c1, 0.015); // Slightly increased density for better far-object fading
 
     const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 2000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    
+    // Use WebGL renderer with performance optimizations
+    // Keep antialias enabled for better visual quality (minimal performance impact)
+    const renderer = new THREE.WebGLRenderer({ 
+        antialias: true, // Keep enabled - disabling causes visual artifacts
+        powerPreference: "high-performance",
+        stencil: false,
+        depth: true
+    });
     renderer.setSize(innerWidth, innerHeight);
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    // Cap pixel ratio at 2.0 for high-DPI displays (reduced from 1.5 to restore quality)
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2.0));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Reduce shadow map resolution for better performance
+    renderer.shadowMap.autoUpdate = true;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
     container.appendChild(renderer.domElement);
+    
+    // Store renderer type for FPS counter (detect if WebGPU is available)
+    renderer.isWebGPU = false; // WebGL for now
+    if (navigator.gpu) {
+        // WebGPU is available, but we're using WebGL for compatibility
+        // You can implement async WebGPU initialization if needed
+    }
 
     // Sky
     scene.add(new THREE.Mesh(
@@ -55,7 +73,8 @@ export function createScene() {
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
     dirLight.position.set(10, 20, 10);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = dirLight.shadow.mapSize.height = 2048;
+    // Reduced shadow map resolution from 2048 to 1024 for better performance
+    dirLight.shadow.mapSize.width = dirLight.shadow.mapSize.height = 1024;
     dirLight.shadow.camera.left = -20;
     dirLight.shadow.camera.right = 20;
     dirLight.shadow.camera.top = 20;

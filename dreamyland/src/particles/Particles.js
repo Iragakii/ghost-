@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 export function createParticles(scene) {
     // Basic particles
-    const pCount = 10000;
+    const pCount = 5000;
     const pGeo = new THREE.BufferGeometry();
     const pPos = new Float32Array(pCount * 3);
     const pVel = [];

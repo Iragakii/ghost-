@@ -320,7 +320,8 @@ export function updateCharacterInteractions(camera, gameState, luvuGroup, charac
             
             // Position notification above ippoac head
             const headPos = ippoacPos.clone();
-            headPos.y += 9; // Above head
+            headPos.y += 13;
+            headPos.x += 0.5; // Above head
             const screenPos = headPos.clone().project(camera);
             
             if (screenPos.x >= -1 && screenPos.x <= 1 &&
@@ -345,6 +346,86 @@ export function updateCharacterInteractions(camera, gameState, luvuGroup, charac
     } else if (qNotifEl) {
         // Hide ippoac Q notification when following ippoac or if group doesn't exist
         batchStyleUpdate(qNotifEl, { display: 'none' });
+    }
+    
+    // Ippoac F notification (show when Luvu or Cactus is close to ippoac, next to Q notification)
+    if (ippoacGroup && !gameState.isFollowingIppoac) {
+        const ippoacPos = new THREE.Vector3();
+        ippoacGroup.getWorldPosition(ippoacPos);
+        
+        // Check distance from both Luvu and Cactus
+        const distanceFromLuvu = luvuGroup.position.distanceTo(ippoacPos);
+        let distanceFromCactus = Infinity;
+        if (cactusGroup) {
+            const cactusPos = new THREE.Vector3();
+            cactusGroup.getWorldPosition(cactusPos);
+            distanceFromCactus = cactusPos.distanceTo(ippoacPos);
+        }
+        
+        // Show F notification if either Luvu or Cactus is close
+        const isClose = distanceFromLuvu < INTERACTION_DISTANCE || distanceFromCactus < INTERACTION_DISTANCE;
+        
+        if (isClose) {
+            camera.updateMatrixWorld();
+            
+            const headPos = ippoacPos.clone();
+            headPos.y += 13; // Above head
+            const screenPos = headPos.clone().project(camera);
+            
+            const ippoacNotifEl = document.getElementById('ippoac-notif');
+            const ippoacChatEl = document.getElementById('ippoac-chat');
+            
+            if (screenPos.x >= -1 && screenPos.x <= 1 &&
+                screenPos.y >= -1 && screenPos.y <= 1 &&
+                screenPos.z < 1 && screenPos.z > -1) {
+                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+                
+                // Show F notification next to Q notification (position F to the right of Q)
+                if (ippoacNotifEl && !gameState.ippoacIsInteracting) {
+                    batchStyleUpdate(ippoacNotifEl, {
+                        display: 'block',
+                        left: (x + 40) + 'px', // Position to the right of Q (Q is at x, F is at x + 40)
+                        top: (y - 40) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+                
+                // Show chat bubble if interacting
+                if (ippoacChatEl && gameState.ippoacIsInteracting) {
+                    batchStyleUpdate(ippoacChatEl, {
+                        display: 'block',
+                        left: x + 'px',
+                        top: (y - 60) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+            } else {
+                if (ippoacNotifEl) batchStyleUpdate(ippoacNotifEl, { display: 'none' });
+                if (ippoacChatEl && !gameState.ippoacIsInteracting) {
+                    batchStyleUpdate(ippoacChatEl, { display: 'none' });
+                }
+            }
+        } else {
+            const ippoacNotifEl = document.getElementById('ippoac-notif');
+            const ippoacChatEl = document.getElementById('ippoac-chat');
+            if (ippoacNotifEl) batchStyleUpdate(ippoacNotifEl, { display: 'none' });
+            if (ippoacChatEl && !gameState.ippoacIsInteracting) {
+                batchStyleUpdate(ippoacChatEl, { display: 'none' });
+            }
+            // Reset interaction state when far away
+            if (gameState.ippoacIsInteracting) {
+                gameState.ippoacIsInteracting = false;
+                if (gameState.ippoacChatTimeout) {
+                    clearTimeout(gameState.ippoacChatTimeout);
+                    gameState.ippoacChatTimeout = null;
+                }
+            }
+        }
+    } else {
+        // Hide when following ippoac
+        const ippoacNotifEl = document.getElementById('ippoac-notif');
+        if (ippoacNotifEl) batchStyleUpdate(ippoacNotifEl, { display: 'none' });
     }
     
     // Hide cactus Q notification only when following cactus (not ippoac, so we can switch from ippoac to cactus)

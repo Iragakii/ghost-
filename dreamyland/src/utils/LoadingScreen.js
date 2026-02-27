@@ -8,11 +8,18 @@ let isLoading = true;
 let loadedCount = 0;
 let totalAssets = 0;
 let onLoadingCompleteCallback = null;
+let loadingStartTime = null;
+let minimumDisplayTime = 4000; // Minimum 4 seconds display time
+let actualLoadingTime = 0;
 
 /**
  * Initialize loading screen
  */
 export function initLoadingScreen() {
+    // Record when loading starts
+    loadingStartTime = performance.now();
+    actualLoadingTime = 0;
+    
     // Create loading screen element
     loadingScreenElement = document.createElement('div');
     loadingScreenElement.id = 'loading-screen';
@@ -74,6 +81,7 @@ function checkIfComplete() {
 
 /**
  * Force complete loading (for cases where we can't track all assets)
+ * This will trigger completeLoading which handles the 4s + loading time logic
  */
 export function forceCompleteLoading() {
     completeLoading();
@@ -81,28 +89,44 @@ export function forceCompleteLoading() {
 
 /**
  * Complete loading and fade out
+ * Ensures minimum 4s + actual loading time before hiding
  */
 function completeLoading() {
     if (!isLoading || !loadingScreenElement) return;
     
-    isLoading = false;
+    // Calculate actual loading time
+    if (loadingStartTime) {
+        actualLoadingTime = performance.now() - loadingStartTime;
+    }
     
-    // Fade out loading screen
-    loadingScreenElement.style.opacity = '0';
+    // Calculate total required time: 4s minimum + actual loading time
+    const totalRequiredTime = minimumDisplayTime + actualLoadingTime;
+    const elapsedTime = actualLoadingTime;
+    const remainingTime = Math.max(0, totalRequiredTime - elapsedTime);
     
-    // Remove from DOM after fade completes
+    // Wait for remaining time if needed, then fade out
     setTimeout(() => {
-        if (loadingScreenElement && loadingScreenElement.parentNode) {
-            loadingScreenElement.parentNode.removeChild(loadingScreenElement);
-            loadingScreenElement = null;
-        }
+        if (!loadingScreenElement) return;
         
-        // Call callback if provided
-        if (onLoadingCompleteCallback) {
-            onLoadingCompleteCallback();
-            onLoadingCompleteCallback = null;
-        }
-    }, 800); // Match transition duration
+        isLoading = false;
+        
+        // Fade out loading screen
+        loadingScreenElement.style.opacity = '0';
+        
+        // Remove from DOM after fade completes
+        setTimeout(() => {
+            if (loadingScreenElement && loadingScreenElement.parentNode) {
+                loadingScreenElement.parentNode.removeChild(loadingScreenElement);
+                loadingScreenElement = null;
+            }
+            
+            // Call callback if provided
+            if (onLoadingCompleteCallback) {
+                onLoadingCompleteCallback();
+                onLoadingCompleteCallback = null;
+            }
+        }, 300); // Fade transition duration
+    }, remainingTime);
 }
 
 /**

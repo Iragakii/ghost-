@@ -13,6 +13,9 @@ import { initInput } from '../input/InputHandler.js';
 import { createVideoScreen } from '../components/VideoScreen.js';
 import { optimizeAllCharacters, optimizeObjectByDistance, DISTANCE_THRESHOLDS } from '../utils/PerformanceOptimizer.js';
 import { initLoadingScreen, setTotalAssets, incrementLoaded, forceCompleteLoading, onLoadingComplete } from '../utils/LoadingScreen.js';
+import { initFPSCounter, updateFPSCounter } from '../utils/FPSCounter.js';
+import { initPerformanceOptimizations, reusableObjects } from '../utils/PerformanceStabilizer.js';
+import { cullObjectsOutsideView } from '../utils/FrustumCuller.js';
 
 let scene, camera, renderer;
 let luvuGroup, cactusGroup, ippoacGroup;
@@ -47,6 +50,8 @@ const gameState = {
     terrainUpdateFrame: 0,
     isFollowingCactus: false,
     isFollowingIppoac: false,
+    ippoacIsInteracting: false,
+    ippoacChatTimeout: null,
     ippoacAnimationKey: null,
     ippoacVel: new THREE.Vector3()
 };
@@ -63,6 +68,9 @@ const MAX_PITCH = Math.PI / 3;
 
 const camOffset = new THREE.Vector3(0, 6, 16);
 const camTarget = new THREE.Vector3();
+// Reusable camera offsets (never allocate in loop)
+const ippoacCamOffset = new THREE.Vector3(0, 30, 25);
+const cactusCamOffset = new THREE.Vector3(0, 15, 20);
 
 export function initGame() {
     // Initialize loading screen first
@@ -83,6 +91,9 @@ export function initGame() {
     scene = sceneData.scene;
     camera = sceneData.camera;
     renderer = sceneData.renderer;
+    
+    // Initialize FPS counter with renderer info
+    initFPSCounter(renderer);
     
     // Start rendering immediately with basic scene (terrain, sky, lights)
     // This ensures LCP happens as soon as possible
@@ -129,7 +140,7 @@ export function initGame() {
         fVideoScreen = createVideoScreen(scene, '/videoo.mp4', {
             width: 35,
             height: 20,
-            position: new THREE.Vector3(-143, 25, -45), // Behind f.glb (f.glb is at z: -40)
+            position: new THREE.Vector3(-180, 25, -85), // Behind f.glb (f.glb is at z: -40)
             rotation: new THREE.Euler(0, -Math.PI , 0), // Same rotation as f.glb
             distortionIntensity: 0.02,
             glitchIntensity: 0.1,
@@ -192,13 +203,22 @@ export function initGame() {
     loadBiarModel(scene);
     loadBiabModel(scene);
 
-    // Fallback: Force complete loading after 2 seconds if LoadingManager doesn't fire
-    // This ensures the game starts quickly even if some assets fail to load
-    // Scene is already visible, so we can hide loading screen sooner
+    // Fallback: Force complete loading after 10 seconds if LoadingManager doesn't fire
+    // This ensures the game starts even if some assets fail to load
+    // The loading screen will ensure minimum 4s + actual loading time before hiding
     setTimeout(() => {
         forceCompleteLoading();
-    }, 2000);
+    }, 10000);
 
+    // Initialize performance optimizations (adaptive DPR disabled to prevent input lag)
+    const perfOpts = initPerformanceOptimizations(renderer, {
+        minDPR: 0.5,
+        maxDPR: 1.5,
+        targetFPS: 60
+    });
+    // Disable adaptive DPR - it causes input lag and INP issues
+    perfOpts.adaptiveDPR.isEnabled = false;
+    
     // Start animation loop IMMEDIATELY (don't wait for models)
     // This ensures the scene is visible right away for better LCP
     const clock = new THREE.Clock();
@@ -208,8 +228,12 @@ export function initGame() {
     
     function animate() {
         requestAnimationFrame(animate);
-        const delta = Math.min(clock.getDelta(), 0.1);
+        const rawDelta = clock.getDelta();
+        const delta = Math.min(rawDelta, 0.1);
         const time = clock.getElapsedTime();
+        
+        // Update adaptive DPR (but don't skip frames - causes input lag)
+        perfOpts.adaptiveDPR.update(delta);
 
         // Keep background music playing if it should be (but not while ang.mp3, custom song, or f video is playing)
         // Only try to play if user has interacted (to avoid autoplay errors)
@@ -300,29 +324,29 @@ export function initGame() {
             targetPosition = cactusGroup.position;
         }
         
-        // Optimize all character models
-        optimizeAllCharacters(characterModels, targetPosition, scene);
-        
-        // Optimize main characters (cactus, ippoac) if they exist
-        if (cactusGroup) {
-            const cactusPos = new THREE.Vector3();
-            cactusGroup.getWorldPosition(cactusPos);
-            const cactusDistance = targetPosition.distanceTo(cactusPos);
-            optimizeObjectByDistance(cactusGroup, cactusDistance, targetPosition);
-        }
-        if (ippoacGroup) {
-            const ippoacPos = new THREE.Vector3();
-            ippoacGroup.getWorldPosition(ippoacPos);
-            const ippoacDistance = targetPosition.distanceTo(ippoacPos);
-            optimizeObjectByDistance(ippoacGroup, ippoacDistance, targetPosition);
+        // Optimize all character models (only every 2 frames to reduce CPU load)
+        if (gameState.terrainUpdateFrame % 2 === 0) {
+            optimizeAllCharacters(characterModels, targetPosition, scene);
+            
+            // Optimize main characters (cactus, ippoac) if they exist
+            // Use reusable objects instead of creating new Vector3 every frame
+            if (cactusGroup) {
+                cactusGroup.getWorldPosition(reusableObjects.vector3_1);
+                const cactusDistance = targetPosition.distanceTo(reusableObjects.vector3_1);
+                optimizeObjectByDistance(cactusGroup, cactusDistance, targetPosition);
+            }
+            if (ippoacGroup) {
+                ippoacGroup.getWorldPosition(reusableObjects.vector3_2);
+                const ippoacDistance = targetPosition.distanceTo(reusableObjects.vector3_2);
+                optimizeObjectByDistance(ippoacGroup, ippoacDistance, targetPosition);
+            }
         }
         
         // Optimize video screens (disable updates when far)
         const optimizeVideoScreen = (videoScreenObj) => {
             if (videoScreenObj && videoScreenObj.mesh) {
-                const screenPos = new THREE.Vector3();
-                videoScreenObj.mesh.getWorldPosition(screenPos);
-                const screenDistance = targetPosition.distanceTo(screenPos);
+                videoScreenObj.mesh.getWorldPosition(reusableObjects.vector3_3);
+                const screenDistance = targetPosition.distanceTo(reusableObjects.vector3_3);
                 if (screenDistance > DISTANCE_THRESHOLDS.FREEZE_ANIMATION) {
                     // Don't update video shader when far (saves GPU)
                     videoScreenObj.skipUpdate = true;
@@ -339,9 +363,22 @@ export function initGame() {
         if (biarVideoScreen) optimizeVideoScreen(biarVideoScreen);
         if (biabVideoScreen) optimizeVideoScreen(biabVideoScreen);
 
-        // Update character interactions
-        updateCharacterInteractions(camera, gameState, luvuGroup, characterModels, characterTimeouts, newCharacterGroup, cactusGroup, ippoacGroup, time);
+        // Frustum culling - hide objects outside camera view (every 2 frames)
+        // This prevents FPS drops when rotating camera and many objects come into view
+        cullObjectsOutsideView(scene, camera, characterModels);
 
+        // Update character interactions (only every 2 frames to reduce CPU load)
+        if (gameState.terrainUpdateFrame % 2 === 0) {
+            updateCharacterInteractions(camera, gameState, luvuGroup, characterModels, characterTimeouts, newCharacterGroup, cactusGroup, ippoacGroup, time);
+        }
+
+        // Update FPS counter
+        updateFPSCounter();
+        
+        // Update performance stats (only in development)
+        if (process.env.NODE_ENV === 'development') {
+            perfOpts.stats.update();
+        }
 
         renderer.render(scene, camera);
     }
@@ -360,22 +397,27 @@ export function initGame() {
     }, { passive: true });
 }
 
-function updateCactus(delta, time, camAngle, getTerrainY, state, cactusGroup) {
-    const dDir = new THREE.Vector3();
-    if (state.keys['arrowup']) dDir.z -= 1;
-    if (state.keys['arrowdown']) dDir.z += 1;
-    if (state.keys['arrowleft']) dDir.x -= 1;
-    if (state.keys['arrowright']) dDir.x += 1;
-    dDir.normalize();
+// Reusable vectors for movement (never allocate in loop)
+const cactusMoveDir = new THREE.Vector3();
+const ippoacMoveDir = new THREE.Vector3();
+const luvuMoveDir = new THREE.Vector3();
 
-    const isRunning = dDir.lengthSq() > 0;
+function updateCactus(delta, time, camAngle, getTerrainY, state, cactusGroup) {
+    cactusMoveDir.set(0, 0, 0);
+    if (state.keys['arrowup']) cactusMoveDir.z -= 1;
+    if (state.keys['arrowdown']) cactusMoveDir.z += 1;
+    if (state.keys['arrowleft']) cactusMoveDir.x -= 1;
+    if (state.keys['arrowright']) cactusMoveDir.x += 1;
+    cactusMoveDir.normalize();
+
+    const isRunning = cactusMoveDir.lengthSq() > 0;
     
     // Update animation based on movement
     updateCactusAnimation(cactusGroup, delta, isRunning);
     
     if (isRunning) {
-        const mx = dDir.x * Math.cos(camAngle) + dDir.z * Math.sin(camAngle);
-        const mz = -dDir.x * Math.sin(camAngle) + dDir.z * Math.cos(camAngle);
+        const mx = cactusMoveDir.x * Math.cos(camAngle) + cactusMoveDir.z * Math.sin(camAngle);
+        const mz = -cactusMoveDir.x * Math.sin(camAngle) + cactusMoveDir.z * Math.cos(camAngle);
         state.cactusVel.x = mx * SPEED2;
         state.cactusVel.z = mz * SPEED2;
         // Calculate target rotation - face the direction of movement, rotated 90 degrees to the left
@@ -392,14 +434,14 @@ function updateCactus(delta, time, camAngle, getTerrainY, state, cactusGroup) {
 }
 
 function updateIppoac(delta, time, camAngle, getTerrainY, state, ippoacGroup) {
-    const dDir = new THREE.Vector3();
-    if (state.keys['w']) dDir.z -= 1;
-    if (state.keys['s']) dDir.z += 1;
-    if (state.keys['a']) dDir.x -= 1;
-    if (state.keys['d']) dDir.x += 1;
-    dDir.normalize();
+    ippoacMoveDir.set(0, 0, 0);
+    if (state.keys['w']) ippoacMoveDir.z -= 1;
+    if (state.keys['s']) ippoacMoveDir.z += 1;
+    if (state.keys['a']) ippoacMoveDir.x -= 1;
+    if (state.keys['d']) ippoacMoveDir.x += 1;
+    ippoacMoveDir.normalize();
 
-    const isRunning = dDir.lengthSq() > 0;
+    const isRunning = ippoacMoveDir.lengthSq() > 0;
     
     // Get animation key (j or k)
     let animationKey = null;
@@ -410,8 +452,8 @@ function updateIppoac(delta, time, camAngle, getTerrainY, state, ippoacGroup) {
     updateIppoacAnimation(ippoacGroup, delta, isRunning, animationKey);
     
     if (isRunning) {
-        const mx = dDir.x * Math.cos(camAngle) + dDir.z * Math.sin(camAngle);
-        const mz = -dDir.x * Math.sin(camAngle) + dDir.z * Math.cos(camAngle);
+        const mx = ippoacMoveDir.x * Math.cos(camAngle) + ippoacMoveDir.z * Math.sin(camAngle);
+        const mz = -ippoacMoveDir.x * Math.sin(camAngle) + ippoacMoveDir.z * Math.cos(camAngle);
         state.ippoacVel.x = mx * SPEED2;
         state.ippoacVel.z = mz * SPEED2;
         // Calculate target rotation - face the direction of movement, rotated 90 degrees to the left
@@ -429,19 +471,19 @@ function updateIppoac(delta, time, camAngle, getTerrainY, state, ippoacGroup) {
 
 function updateLuvu(delta, time, camAngle, getTerrainY, state, particles, luvuGroup, cactusGroup, audioData) {
     // Only allow Luvu movement when NOT following ippoac
-    const gDir = new THREE.Vector3();
+    luvuMoveDir.set(0, 0, 0);
     if (!state.isFollowingIppoac) {
-        if (state.keys['w']) gDir.z -= 1;
-        if (state.keys['s']) gDir.z += 1;
-        if (state.keys['a']) gDir.x -= 1;
-        if (state.keys['d']) gDir.x += 1;
+        if (state.keys['w']) luvuMoveDir.z -= 1;
+        if (state.keys['s']) luvuMoveDir.z += 1;
+        if (state.keys['a']) luvuMoveDir.x -= 1;
+        if (state.keys['d']) luvuMoveDir.x += 1;
     }
-    gDir.normalize();
-    const gMoving = gDir.lengthSq() > 0;
+    luvuMoveDir.normalize();
+    const gMoving = luvuMoveDir.lengthSq() > 0;
 
     if (gMoving) {
-        const moveVel = gDir.clone().multiplyScalar(SPEED);
-        particles.spawnFlowerParticles(luvuGroup.position, moveVel);
+        reusableObjects.vector3_1.copy(luvuMoveDir).multiplyScalar(SPEED);
+        particles.spawnFlowerParticles(luvuGroup.position, reusableObjects.vector3_1);
     }
 
     const dist = luvuGroup.position.distanceTo(cactusGroup.position);
@@ -451,8 +493,8 @@ function updateLuvu(delta, time, camAngle, getTerrainY, state, particles, luvuGr
     if (!userData || !userData.bodyMesh) {
         // Model not loaded yet, just update position
         if (gMoving) {
-            const mx = gDir.x * Math.cos(camAngle) + gDir.z * Math.sin(camAngle);
-            const mz = -gDir.x * Math.sin(camAngle) + gDir.z * Math.cos(camAngle);
+            const mx = luvuMoveDir.x * Math.cos(camAngle) + luvuMoveDir.z * Math.sin(camAngle);
+            const mz = -luvuMoveDir.x * Math.sin(camAngle) + luvuMoveDir.z * Math.cos(camAngle);
             state.luvuVel.x = mx * SPEED;
             state.luvuVel.z = mz * SPEED;
             // Calculate target rotation - match original ghost code exactly
@@ -478,8 +520,8 @@ function updateLuvu(delta, time, camAngle, getTerrainY, state, particles, luvuGr
 
     if (!state.isHugging) {
         if (gMoving) {
-            const mx = gDir.x * Math.cos(camAngle) + gDir.z * Math.sin(camAngle);
-            const mz = -gDir.x * Math.sin(camAngle) + gDir.z * Math.cos(camAngle);
+            const mx = luvuMoveDir.x * Math.cos(camAngle) + luvuMoveDir.z * Math.sin(camAngle);
+            const mz = -luvuMoveDir.x * Math.sin(camAngle) + luvuMoveDir.z * Math.cos(camAngle);
             state.luvuVel.x = mx * SPEED;
             state.luvuVel.z = mz * SPEED;
             // Calculate target rotation - match original ghost code exactly
@@ -734,7 +776,8 @@ function updateLuvu(delta, time, camAngle, getTerrainY, state, particles, luvuGr
         
         // Hugging animation - hands out
         if (userData.bodyMesh) {
-            userData.bodyMesh.scale.lerp(new THREE.Vector3(1, 1, 1), 10 * delta);
+            reusableObjects.vector3_1.set(1, 1, 1);
+            userData.bodyMesh.scale.lerp(reusableObjects.vector3_1, 10 * delta);
         }
         if (userData.leftHand) {
             userData.leftHand.rotation.z = -Math.PI / 2;
@@ -755,23 +798,30 @@ function updateCamera(delta, state, pinkLight, blueLight) {
     }
     
     // Use different camera offset for cactus and ippoac
+    // Use reusable offsets instead of creating new Vector3 every frame
     let currentOffset = camOffset;  // Default: Luvu offset
     if (state.isFollowingIppoac) {
-        currentOffset = new THREE.Vector3(0, 30, 25);  // Ippoac: higher (15) and farther (20)
+        currentOffset = ippoacCamOffset;
     } else if (state.isFollowingCactus) {
-        currentOffset = new THREE.Vector3(0, 15, 20);  // Cactus: higher (15) and farther (20)
+        currentOffset = cactusCamOffset;
     }
     
-    const rotatedOffset = currentOffset.clone();
-    rotatedOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), state.cameraRotationY);
+    // Use reusable object instead of clone
+    reusableObjects.vector3_2.copy(currentOffset);
+    const rotatedOffset = reusableObjects.vector3_2;
+    // Use reusable objects instead of creating new Vector3 every frame
+    reusableObjects.vector3_4.set(0, 1, 0);
+    rotatedOffset.applyAxisAngle(reusableObjects.vector3_4, state.cameraRotationY);
     
-    const rightVector = new THREE.Vector3(1, 0, 0);
-    rightVector.applyAxisAngle(new THREE.Vector3(0, 1, 0), state.cameraRotationY);
-    rotatedOffset.applyAxisAngle(rightVector, state.cameraRotationX);
-    rotatedOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), targetGroup.rotation.y * 0.1);
+    reusableObjects.vector3_5.set(1, 0, 0);
+    reusableObjects.vector3_5.applyAxisAngle(reusableObjects.vector3_4, state.cameraRotationY);
+    rotatedOffset.applyAxisAngle(reusableObjects.vector3_5, state.cameraRotationX);
+    rotatedOffset.applyAxisAngle(reusableObjects.vector3_4, targetGroup.rotation.y * 0.1);
 
-    camera.position.lerp(targetGroup.position.clone().add(rotatedOffset), 5 * delta);
-    camTarget.copy(targetGroup.position).add(new THREE.Vector3(0, 2, 0));
+    reusableObjects.vector3_1.copy(targetGroup.position).add(rotatedOffset);
+    camera.position.lerp(reusableObjects.vector3_1, 5 * delta);
+    reusableObjects.vector3_1.set(0, 2, 0);
+    camTarget.copy(targetGroup.position).add(reusableObjects.vector3_1);
     camera.lookAt(camTarget);
     
     pinkLight.position.set(targetGroup.position.x - 3, targetGroup.position.y + 3, targetGroup.position.z + 3);

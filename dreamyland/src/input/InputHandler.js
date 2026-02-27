@@ -28,6 +28,42 @@ export function initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, charac
 
         // Handle F key for character interaction
         if (e.key.toLowerCase() === 'f') {
+            // Handle F key for Ippoac (check distance first)
+            if (ippoacGroup && !gameState.isFollowingIppoac) {
+                const ippoacPos = new THREE.Vector3();
+                ippoacGroup.getWorldPosition(ippoacPos);
+                const distanceToIppoac = luvuGroup.position.distanceTo(ippoacPos);
+                
+                if (distanceToIppoac < 8) { // INTERACTION_DISTANCE
+                    // Show chat bubble
+                    gameState.ippoacIsInteracting = true;
+                    const ippoacChatEl = document.getElementById('ippoac-chat');
+                    if (ippoacChatEl) {
+                        ippoacChatEl.style.display = 'block';
+                    }
+                    
+                    // Hide F notification
+                    const ippoacNotifEl = document.getElementById('ippoac-notif');
+                    if (ippoacNotifEl) {
+                        ippoacNotifEl.style.display = 'none';
+                    }
+                    
+                    // Auto-hide chat after 3 seconds
+                    if (gameState.ippoacChatTimeout) {
+                        clearTimeout(gameState.ippoacChatTimeout);
+                    }
+                    gameState.ippoacChatTimeout = setTimeout(() => {
+                        if (ippoacChatEl) {
+                            ippoacChatEl.style.display = 'none';
+                        }
+                        gameState.ippoacIsInteracting = false;
+                        gameState.ippoacChatTimeout = null;
+                    }, 3000);
+                    
+                    return; // Exit early to prevent other handlers
+                }
+            }
+            
             if (gameState.closestCharIndex >= 0) {
                 const char = characterModels[gameState.closestCharIndex];
                 if (char) {

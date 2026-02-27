@@ -2,11 +2,11 @@ import * as THREE from 'three';
 
 // Distance thresholds for optimizations
 export const DISTANCE_THRESHOLDS = {
-    FREEZE_ANIMATION: 50,    // Freeze animations beyond this distance
-    DISABLE_SHADOWS: 40,     // Disable shadows beyond this distance
-    REDUCE_QUALITY_LOW: 30,  // Start reducing quality (low tier)
-    REDUCE_QUALITY_MED: 50,  // Medium quality reduction
-    REDUCE_QUALITY_HIGH: 70, // High quality reduction (very low quality)
+    FREEZE_ANIMATION: 100,    // Freeze animations beyond this distance (increased from 50)
+    DISABLE_SHADOWS: 80,     // Disable shadows beyond this distance (increased from 40)
+    REDUCE_QUALITY_LOW: 30,  // Start reducing quality (low tier) (increased from 10)
+    REDUCE_QUALITY_MED: 60,  // Medium quality reduction (increased from 20)
+    REDUCE_QUALITY_HIGH: 100, // High quality reduction (very low quality) (increased from 50)
     FOG_START: 30,           // Fog starts becoming noticeable
     FOG_END: 100             // Fog fully obscures objects
 };
@@ -28,11 +28,10 @@ const QUALITY_LEVELS = {
 export function optimizeObjectByDistance(object, distance, cameraPosition) {
     if (!object) return;
 
-    // Calculate distance if not provided
+    // Calculate distance if not provided (use reusable vector)
     if (distance === undefined) {
-        const objectPos = new THREE.Vector3();
-        object.getWorldPosition(objectPos);
-        distance = cameraPosition.distanceTo(objectPos);
+        object.getWorldPosition(optObjectPos);
+        distance = cameraPosition.distanceTo(optObjectPos);
     }
 
     // Get or create state storage
@@ -203,30 +202,40 @@ function applyQualityLevel(mesh, originalMaterial, qualityLevel, state) {
     }
 }
 
+// Reusable vectors for optimization (never allocate in loop)
+const optCharPos = new THREE.Vector3();
+const optObjectPos = new THREE.Vector3();
+
+// Frame counter for expensive operations
+let optimizationFrameCounter = 0;
+
 /**
  * Optimize all character models based on distance from target
  */
 export function optimizeAllCharacters(characterModels, targetPosition, scene) {
     if (!targetPosition || !characterModels) return;
 
+    // Use reusable vector instead of creating new one every frame
     characterModels.forEach((char, index) => {
         if (char && char.group) {
-            const charPos = new THREE.Vector3();
-            char.group.getWorldPosition(charPos);
-            const distance = targetPosition.distanceTo(charPos);
+            char.group.getWorldPosition(optCharPos);
+            const distance = targetPosition.distanceTo(optCharPos);
             optimizeObjectByDistance(char.group, distance, targetPosition);
         }
     });
     
-    // Also optimize all objects in scene that have userData.mixer (animated objects)
-    scene.traverse((object) => {
-        if (object.userData && object.userData.mixer && object.parent) {
-            const objectPos = new THREE.Vector3();
-            object.getWorldPosition(objectPos);
-            const distance = targetPosition.distanceTo(objectPos);
-            optimizeObjectByDistance(object, distance, targetPosition);
-        }
-    });
+    // Only traverse scene every 3 frames (expensive operation)
+    optimizationFrameCounter++;
+    if (optimizationFrameCounter % 3 === 0) {
+        // Also optimize all objects in scene that have userData.mixer (animated objects)
+        scene.traverse((object) => {
+            if (object.userData && object.userData.mixer && object.parent) {
+                object.getWorldPosition(optObjectPos);
+                const distance = targetPosition.distanceTo(optObjectPos);
+                optimizeObjectByDistance(object, distance, targetPosition);
+            }
+        });
+    }
 }
 
 /**

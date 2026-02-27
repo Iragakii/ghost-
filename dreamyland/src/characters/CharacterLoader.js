@@ -105,6 +105,8 @@ function loadModelWithColor(colorHex, position, modelName, charIndex, scene, cha
         });
 
         scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
         characterModels[charIndex] = {
             group: modelGroup,
             position: position,
@@ -145,6 +147,8 @@ function loadGLModel(scene, characterModels) {
         });
 
         scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
         // Store reference to character model (using index 16, or find an unused index)
         characterModels[16] = {
             group: modelGroup,
@@ -174,6 +178,8 @@ function loadIceBModel(scene, characterModels) {
         });
 
         scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
         // Store reference to character model (using index 17)
         characterModels[17] = {
             group: modelGroup,
@@ -203,6 +209,8 @@ function loadIceEModel(scene, characterModels) {
         });
 
         scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
         // Store reference to character model (using index 18)
         characterModels[18] = {
             group: modelGroup,
@@ -232,6 +240,8 @@ function loadIceOModel(scene, characterModels) {
         });
 
         scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
         // Store reference to character model (using index 19)
         characterModels[19] = {
             group: modelGroup,
@@ -261,6 +271,8 @@ function loadIceRModel(scene, characterModels) {
         });
 
         scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
         // Store reference to character model (using index 21)
         characterModels[21] = {
             group: modelGroup,
@@ -304,7 +316,7 @@ function loadIceVModel(scene, characterModels) {
 function loadFModel(scene, characterModels) {
     gltfLoader.load('/f.glb', (gltf) => {
         const modelGroup = new THREE.Group();
-        modelGroup.position.set(-130, 7, -40);
+        modelGroup.position.set(-170, 7, -80);
         modelGroup.rotation.y = -Math.PI / 2;
         modelGroup.scale.set(12, 12, 12);
 
@@ -463,65 +475,13 @@ function loadLotus2Model(scene, characterModels) {
     });
 }
 
-function loadThrelefModel(scene, characterModels) {
-    gltfLoader.load('/threlef.glb', (gltf) => {
-        const modelGroup = new THREE.Group();
-        modelGroup.position.set(-115, 7, 150);
-        modelGroup.rotation.y = Math.PI + 5;
-        modelGroup.scale.set(30, 30, 30);
 
-        gltf.scene.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-                const clonedMesh = child.clone();
-                clonedMesh.castShadow = true;
-                clonedMesh.receiveShadow = true;
-                modelGroup.add(clonedMesh);
-            }
-        });
-
-        scene.add(modelGroup);
-        characterModels[13] = {
-            group: modelGroup,
-            position: { x: -39, y: 7, z: 10 },
-            isInteracting: false
-        };
-    }, undefined, (error) => {
-        console.error('Error loading threlef.glb:', error);
-    });
-}
-
-function loadThrelefModel2(scene, characterModels) {
-    gltfLoader.load('/threlef.glb', (gltf) => {
-        const modelGroup = new THREE.Group();
-        modelGroup.position.set(-200, 7, 120);
-        modelGroup.rotation.y = Math.PI + 39;
-        modelGroup.scale.set(30, 30, 30);
-
-        gltf.scene.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-                const clonedMesh = child.clone();
-                clonedMesh.castShadow = true;
-                clonedMesh.receiveShadow = true;
-                modelGroup.add(clonedMesh);
-            }
-        });
-
-        scene.add(modelGroup);
-        characterModels[13] = {
-            group: modelGroup,
-            position: { x: -39, y: 7, z: 10 },
-            isInteracting: false
-        };
-    }, undefined, (error) => {
-        console.error('Error loading threlef.glb:', error);
-    });
-}
 
 function loadPinkfModel(scene, characterModels) {
     gltfLoader.load('/pinkf.glb', (gltf) => {
         const modelGroup = new THREE.Group();
-        modelGroup.position.set(-232, 7, 70);
-        modelGroup.rotation.y = Math.PI + 10;
+        modelGroup.position.set(-230, 7, -85);
+        modelGroup.rotation.y = Math.PI + 40;
         modelGroup.scale.set(32, 32, 32);
 
         gltf.scene.traverse((child) => {
@@ -534,6 +494,8 @@ function loadPinkfModel(scene, characterModels) {
         });
 
         scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
         characterModels[14] = {
             group: modelGroup,
             position: { x: -32, y: 7, z: 10 },
@@ -544,37 +506,11 @@ function loadPinkfModel(scene, characterModels) {
     });
 }
 
-function loadPinkfModel2(scene, characterModels) {
-    gltfLoader.load('/pinkf.glb', (gltf) => {
-        const modelGroup = new THREE.Group();
-        modelGroup.position.set(-170, 7, -30);
-        modelGroup.rotation.y = Math.PI + 15;
-        modelGroup.scale.set(32, 32, 32);
-
-        gltf.scene.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-                const clonedMesh = child.clone();
-                clonedMesh.castShadow = true;
-                clonedMesh.receiveShadow = true;
-                modelGroup.add(clonedMesh);
-            }
-        });
-
-        scene.add(modelGroup);
-        characterModels[14] = {
-            group: modelGroup,
-            position: { x: -32, y: 7, z: 10 },
-            isInteracting: false
-        };
-    }, undefined, (error) => {
-        console.error('Error loading pinkf.glb:', error);
-    });
-}
 
 function loadVEModel(scene, characterModels) {
     gltfLoader.load('/ve.glb', (gltf) => {
         const modelGroup = new THREE.Group();
-        modelGroup.position.set(-140, 7, -40);
+        modelGroup.position.set(-180, 7, -80);
         modelGroup.rotation.y = -Math.PI / 2;
         modelGroup.scale.set(12, 12, 12);
 
@@ -601,7 +537,7 @@ function loadVEModel(scene, characterModels) {
 function loadPPModel(scene, characterModels) {
     gltfLoader.load('/pp.glb', (gltf) => {
         const modelGroup = new THREE.Group();
-        modelGroup.position.set(-150, 7, -40);
+        modelGroup.position.set(-190, 7, -80);
         modelGroup.rotation.y = -Math.PI / 2;
         modelGroup.scale.set(12, 12, 12);
 
@@ -628,7 +564,7 @@ function loadPPModel(scene, characterModels) {
 function loadLMModel(scene, characterModels) {
     gltfLoader.load('/lm.glb', (gltf) => {
         const modelGroup = new THREE.Group();
-        modelGroup.position.set(-160, 4, -10);
+        modelGroup.position.set(-199, 4, -50);
         modelGroup.rotation.y = Math.PI / 4;
         modelGroup.scale.set(6, 6, 6);
 
@@ -642,6 +578,8 @@ function loadLMModel(scene, characterModels) {
         });
 
         scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
         characterModels[8] = {
             group: modelGroup,
             position: { x: -120, y: 4, z: -10 },
@@ -660,7 +598,7 @@ function loadLMModel(scene, characterModels) {
 function loadFATModel(scene, characterModels) {
     gltfLoader.load('/fat.glb', (gltf) => {
         const modelGroup = new THREE.Group();
-        modelGroup.position.set(-140, 7, -13);
+        modelGroup.position.set(-180, 7, -53);
         modelGroup.rotation.y = Math.PI / 4;
         modelGroup.scale.set(18, 18, 18);
 
@@ -810,10 +748,10 @@ export function loadAllCharacters(scene, characterModels, characterTimeouts, gam
     loadLotusModel2(scene, characterModels);
     loadDaisyModel(scene, characterModels);
     loadLotus2Model(scene, characterModels);
-    loadThrelefModel2(scene, characterModels);
-    loadThrelefModel(scene, characterModels);
+   
+    
     loadPinkfModel(scene, characterModels);
-    loadPinkfModel2(scene, characterModels);
+  
     loadVEModel(scene, characterModels);
     loadPPModel(scene, characterModels);
     loadLMModel(scene, characterModels);

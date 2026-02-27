@@ -55,10 +55,12 @@ export function createPinwheels(scene) {
         pinwheelOrientations[i * 3 + 2] = (Math.random() - 0.5) * Math.PI * 0.5;
     }
 
+    // Reusable objects (never allocate in update loop)
+    const pwDummy = new THREE.Object3D();
+    const pwBladeDummy = new THREE.Object3D();
+    
     return {
         update: (delta, time) => {
-            const pwDummy = new THREE.Object3D();
-            const pwBladeDummy = new THREE.Object3D();
 
             for (let i = 0; i < pinwheelCount; i++) {
                 const x = pinwheelPositions[i * 3] + Math.sin(time * 0.2 + pinwheelPhases[i]) * 2;
