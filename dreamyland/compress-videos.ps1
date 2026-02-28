@@ -1,5 +1,5 @@
 # PowerShell script to compress video files using FFmpeg
-# Compresses: video.mp4, videoo.mp4, videoippo.mp4, videoape.mp4
+# Compresses: mojito.mp4, videoo.mp4, videoippo.mp4, videoape.mp4
 
 Write-Host "Starting video compression..." -ForegroundColor Green
 
@@ -56,7 +56,7 @@ Write-Host "Using ffmpeg at: $ffmpegPath" -ForegroundColor Gray
 
 # Define the videos to compress
 $videosToCompress = @(
-    @{ Input = "public/video.mp4"; Output = "public/video.mp4" },
+    @{ Input = "public/mojito.mp4"; Output = "public/mojito.mp4" },
     @{ Input = "public/videoo.mp4"; Output = "public/videoo.mp4" },
     @{ Input = "public/playground/videoippo.mp4"; Output = "public/playground/videoippo.mp4" },
     @{ Input = "public/playground/videoape.mp4"; Output = "public/playground/videoape.mp4" }

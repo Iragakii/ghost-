@@ -8,7 +8,7 @@ import { suppressCORSErrors } from '../utils/CORSErrorSuppressor.js';
  * @param {Object} options - Configuration options
  * @returns {Object} - Returns { screenMesh, video, update } for animation loop
  */
-export function createVideoScreen(scene, videoPath = '/video.mp4', options = {}) {
+export function createVideoScreen(scene, videoPath = '/mojito.mp4', options = {}) {
     const {
         width = 20,
         height = 12,

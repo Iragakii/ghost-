@@ -20,7 +20,7 @@ A 3D video display screen with glitch/distortion shader effects for your Three.j
 
 Place your video file in the `public` folder:
 ```
-dreamyland/public/video.mp4
+dreamyland/public/mojito.mp4
 ```
 
 **Recommended video format:**
@@ -34,7 +34,7 @@ In `dreamyland/src/game/Game.js`, uncomment the video screen creation:
 
 ```javascript
 // Create video screen at spawn location
-videoScreen = createVideoScreen(scene, '/video.mp4', {
+videoScreen = createVideoScreen(scene, '/mojito.mp4', {
     width: 20,
     height: 12,
     position: new THREE.Vector3(0, 8, -15), // In front of spawn, facing camera
@@ -79,12 +79,12 @@ height: 12,  // Screen height
 
 ### Basic Setup
 ```javascript
-videoScreen = createVideoScreen(scene, '/video.mp4');
+videoScreen = createVideoScreen(scene, '/mojito.mp4');
 ```
 
 ### Custom Position and Size
 ```javascript
-videoScreen = createVideoScreen(scene, '/video.mp4', {
+videoScreen = createVideoScreen(scene, '/mojito.mp4', {
     width: 30,
     height: 18,
     position: new THREE.Vector3(10, 10, -20),
@@ -94,7 +94,7 @@ videoScreen = createVideoScreen(scene, '/video.mp4', {
 
 ### Heavy Glitch Effect
 ```javascript
-videoScreen = createVideoScreen(scene, '/video.mp4', {
+videoScreen = createVideoScreen(scene, '/mojito.mp4', {
     distortionIntensity: 0.05,
     glitchIntensity: 0.3,
     emissiveIntensity: 2.0
@@ -103,7 +103,7 @@ videoScreen = createVideoScreen(scene, '/video.mp4', {
 
 ### Subtle Effect
 ```javascript
-videoScreen = createVideoScreen(scene, '/video.mp4', {
+videoScreen = createVideoScreen(scene, '/mojito.mp4', {
     distortionIntensity: 0.01,
     glitchIntensity: 0.05,
     emissiveIntensity: 1.2

@@ -18,8 +18,8 @@ Or download from: https://ffmpeg.org
 ### Recommended Settings (Best Quality/Size Balance)
 
 ```bash
-# Compress video.mp4
-ffmpeg -i public/video.mp4 -vcodec libx264 -crf 23 -preset slow -acodec aac -b:a 128k public/video.mp4
+# Compress mojito.mp4
+ffmpeg -i public/mojito.mp4 -vcodec libx264 -crf 23 -preset slow -acodec aac -b:a 128k public/mojito.mp4
 
 # Compress videoo.mp4
 ffmpeg -i public/videoo.mp4 -vcodec libx264 -crf 23 -preset slow -acodec aac -b:a 128k public/videoo.mp4
@@ -43,6 +43,6 @@ ffmpeg -i public/playground/videoape.mp4 -vcodec libx264 -crf 23 -preset slow -a
 
 To keep originals, use different output names:
 ```bash
-ffmpeg -i public/video.mp4 -vcodec libx264 -crf 23 -preset slow -acodec aac -b:a 128k public/video_compressed.mp4
+ffmpeg -i public/mojito.mp4 -vcodec libx264 -crf 23 -preset slow -acodec aac -b:a 128k public/video_compressed.mp4
 ```
 

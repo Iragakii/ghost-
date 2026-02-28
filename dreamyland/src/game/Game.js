@@ -163,7 +163,7 @@ export function initGame() {
     // Place your video file in /public/video.mp4
     // If video file doesn't exist, it will show a colored screen with glitch effects
     try {
-        videoScreen = createVideoScreen(scene, '/video.mp4', {
+        videoScreen = createVideoScreen(scene, '/mojito.mp4', {
             width: 100,
             height: 50,
             position: new THREE.Vector3(290, 27, 0), // In front of spawn, facing camera
@@ -176,8 +176,9 @@ export function initGame() {
     } catch (error) {
         console.log('Video screen creation error (video file may not exist):', error);
     }
- try {
-        videoScreen = createVideoScreen(scene, '/video.mp4', {
+    let videoScreen1 = null;
+     try {
+        videoScreen1 = createVideoScreen(scene, '/video.mp4', {
             width: 100,
             height: 50,
             position: new THREE.Vector3(196.3, 80, 195), // In front of spawn, facing camera
