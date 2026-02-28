@@ -164,7 +164,7 @@ function loadIceBModel(scene, characterModels) {
     gltfLoader.load('/pinklocation/iceb.glb', (gltf) => {
         const modelGroup = new THREE.Group();
         // Position next to gl.glb (which is at x: 40)
-        modelGroup.position.set(-160, 19, -200);
+        modelGroup.position.set(-180, 19, -235);
         modelGroup.rotation.y = -Math.PI / 2; // Same rotation as gl.glb
         modelGroup.scale.set(40, 40, 40); // Same scale as gl.glb
 
@@ -560,9 +560,8 @@ function loadIceOModel(scene, characterModels) {
         // Mark as character model for frustum culling
         modelGroup.userData.isCharacterModel = true;
         // Mark to exclude from aggressive distance culling (model is far from spawn)
+        // But allow frustum culling (hide when outside camera view)
         modelGroup.userData.skipDistanceCull = true;
-        // Mark to never hide this model
-        modelGroup.userData.neverHide = true;
         // Store reference to character model (using index 19)
         characterModels[19] = {
             group: modelGroup,
@@ -578,7 +577,7 @@ function loadIceRModel(scene, characterModels) {
     gltfLoader.load('/pinklocation/icer.glb', (gltf) => {
         const modelGroup = new THREE.Group();
         // Position next to iceo.glb (which interaction position is at x: 100)
-        modelGroup.position.set(-110, 19, -200);
+        modelGroup.position.set(-130, 19, -235);
         modelGroup.rotation.y = -Math.PI / 2; // Same rotation as gl.glb
         modelGroup.scale.set(40, 40, 40); // Same scale as gl.glb
 
@@ -708,9 +707,8 @@ function loadLotusModel(scene, characterModels) {
         // Mark as character model for frustum culling
         modelGroup.userData.isCharacterModel = true;
         // Mark to exclude from aggressive distance culling (model is far from spawn)
+        // But allow frustum culling (hide when outside camera view)
         modelGroup.userData.skipDistanceCull = false;
-        // Mark to never hide this model
-        modelGroup.userData.neverHide = false;
         characterModels[10] = {
             group: modelGroup,
             position: { x: -60, y: 7, z: 10 },
@@ -802,9 +800,8 @@ function loadLotus2Model(scene, characterModels) {
         // Mark as character model for frustum culling
         modelGroup.userData.isCharacterModel = true;
         // Mark to exclude from aggressive distance culling (model is far from spawn)
+        // But allow frustum culling (hide when outside camera view)
         modelGroup.userData.skipDistanceCull = true;
-        // Mark to never hide this model
-        modelGroup.userData.neverHide = true;
         characterModels[12] = {
             group: modelGroup,
             position: { x: -46, y: 7, z: 10 },
@@ -972,7 +969,7 @@ function loadBiarModel(scene , characterModels) {
         incrementLoaded();
         const modelGroup = new THREE.Group();
         // Position next to cactus at spawn location (cactus is at x: 5, z: 5)
-        modelGroup.position.set(10, 10, 150); // Next to cactus, slightly to the right
+        modelGroup.position.set(10, 10, 200); // Next to cactus, slightly to the right (swapped with biab)
         modelGroup.rotation.y = -Math.PI / 2; // Face forward
         modelGroup.scale.set(12, 12, 12); // Similar scale to other characters
 
@@ -992,7 +989,7 @@ function loadBiarModel(scene , characterModels) {
         const nextIndex = characterModels.length;
         characterModels[nextIndex] = {
             group: modelGroup,
-            position: { x: 10, y: 10, z: 150 },
+            position: { x: 10, y: 10, z: 200 },
             isInteracting: false
         };
     }, undefined, (error) => {
@@ -1045,9 +1042,9 @@ function loadBiabModel(scene , characterModels) {
     gltfLoader.load('/playground/biab.glb', (gltf) => {
         incrementLoaded();
         const modelGroup = new THREE.Group();
-        // Position next to biar.glb (biar is at x: 10, y: 10, z: 250)
-        modelGroup.position.set(10, 10, 200); // Next to biar.glb, slightly to the right
-        modelGroup.rotation.y = -Math.PI / 2; // Face forward (same as biar)
+        // Position next to biar.glb (biar is at x: 10, y: 10, z: 200)
+        modelGroup.position.set(10, 10, 150); // Next to biar.glb, slightly to the right (swapped with biar)
+        modelGroup.rotation.y = Math.PI / 2 ; // Face forward (same as biar)
         modelGroup.scale.set(12, 12, 12); // Same scale as biar
 
         gltf.scene.traverse((child) => {
@@ -1066,11 +1063,37 @@ function loadBiabModel(scene , characterModels) {
         const nextIndex = characterModels.length;
         characterModels[nextIndex] = {
             group: modelGroup,
-            position: { x: 10, y: 10, z: 200 },
+            position: { x: 10, y: 10, z: 150 },
             isInteracting: false
         };
     }, undefined, (error) => {
         console.error('Error loading biab.glb:', error);
+    });
+}
+
+function loadBiabbModel(scene, characterModels) {
+    gltfLoader.load('/playground/biabb.glb', (gltf) => {
+        incrementLoaded();
+        const modelGroup = new THREE.Group();
+        // Position next to Baby model (Baby is at x: -30, y: -1, z: 175)
+        modelGroup.position.set(-20, 10, 175); // Next to Baby, slightly to the right
+        modelGroup.rotation.y = Math.PI; // Same rotation as Baby
+        modelGroup.scale.set(12, 12, 12); // Same scale as Baby
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
+    }, undefined, (error) => {
+        console.error('Error loading biabb.glb:', error);
     });
 }
 
@@ -1158,6 +1181,7 @@ export function loadAllCharacters(scene, characterModels, characterTimeouts, gam
     loadBiabModel(scene , characterModels)
     loadBiarModel(scene , characterModels)
     loadBiagrModel(scene, characterModels); // Load biagr.glb next to biar.glb
+    loadBiabbModel(scene, characterModels); // Load biabb.glb next to Baby
     loadPinkfModel(scene, characterModels);
   
     loadVEModel(scene, characterModels);

@@ -11,7 +11,7 @@ let fatSound = null;
 let lmSound = null;
 let fVideoSound = null;
 
-export function initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, characterModels, characterTimeouts, newCharacterGroup, audioData, scene) {
+export function initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, buckGroup, gockGroup, kubaGroup, babyGroup, characterModels, characterTimeouts, newCharacterGroup, audioData, scene) {
     const { bgMusic } = audioData || {};
 
     // Keyboard input
@@ -33,7 +33,30 @@ export function initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, charac
             if (cactusGroup && !gameState.isFollowingCactus) {
                 const cactusPos = new THREE.Vector3();
                 cactusGroup.getWorldPosition(cactusPos);
-                const distanceToCactus = luvuGroup.position.distanceTo(cactusPos);
+                
+                // Check distance from current character (Luvu or whoever we're following)
+                let currentCharPos = luvuGroup.position.clone();
+                if (gameState.isFollowingIppoac && ippoacGroup) {
+                    ippoacGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingBuck && buckGroup) {
+                    buckGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingGock && gockGroup) {
+                    gockGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingKuba && kubaGroup && kubaGroup.position) {
+                    if (kubaGroup.getWorldPosition) {
+                        kubaGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(kubaGroup.position);
+                    }
+                } else if (gameState.isFollowingBaby && babyGroup && babyGroup.position) {
+                    if (babyGroup.getWorldPosition) {
+                        babyGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(babyGroup.position);
+                    }
+                }
+                
+                const distanceToCactus = currentCharPos.distanceTo(cactusPos);
                 
                 if (distanceToCactus < 8) { // INTERACTION_DISTANCE
                     // Show chat bubble
@@ -115,7 +138,30 @@ export function initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, charac
             if (ippoacGroup && !gameState.isFollowingIppoac) {
                 const ippoacPos = new THREE.Vector3();
                 ippoacGroup.getWorldPosition(ippoacPos);
-                const distanceToIppoac = luvuGroup.position.distanceTo(ippoacPos);
+                
+                // Check distance from current character (Luvu or whoever we're following)
+                let currentCharPos = luvuGroup.position.clone();
+                if (gameState.isFollowingCactus && cactusGroup) {
+                    cactusGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingBuck && buckGroup) {
+                    buckGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingGock && gockGroup) {
+                    gockGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingKuba && kubaGroup && kubaGroup.position) {
+                    if (kubaGroup.getWorldPosition) {
+                        kubaGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(kubaGroup.position);
+                    }
+                } else if (gameState.isFollowingBaby && babyGroup && babyGroup.position) {
+                    if (babyGroup.getWorldPosition) {
+                        babyGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(babyGroup.position);
+                    }
+                }
+                
+                const distanceToIppoac = currentCharPos.distanceTo(ippoacPos);
                 
                 if (distanceToIppoac < 8) { // INTERACTION_DISTANCE
                     // Show chat bubble
@@ -141,6 +187,244 @@ export function initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, charac
                         }
                         gameState.ippoacIsInteracting = false;
                         gameState.ippoacChatTimeout = null;
+                    }, 3000);
+                    
+                    return; // Exit early to prevent other handlers
+                }
+            }
+            
+            // Handle F key for Buck (check distance first)
+            if (buckGroup && !gameState.isFollowingBuck) {
+                const buckPos = new THREE.Vector3();
+                buckGroup.getWorldPosition(buckPos);
+                
+                // Check distance from current character (Luvu or whoever we're following)
+                let currentCharPos = luvuGroup.position.clone();
+                if (gameState.isFollowingCactus && cactusGroup) {
+                    cactusGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingIppoac && ippoacGroup) {
+                    ippoacGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingGock && gockGroup) {
+                    gockGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingKuba && kubaGroup && kubaGroup.position) {
+                    if (kubaGroup.getWorldPosition) {
+                        kubaGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(kubaGroup.position);
+                    }
+                } else if (gameState.isFollowingBaby && babyGroup && babyGroup.position) {
+                    if (babyGroup.getWorldPosition) {
+                        babyGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(babyGroup.position);
+                    }
+                }
+                
+                const distanceToBuck = currentCharPos.distanceTo(buckPos);
+                
+                if (distanceToBuck < 8) { // INTERACTION_DISTANCE
+                    // Show chat bubble
+                    gameState.buckIsInteracting = true;
+                    const buckChatEl = document.getElementById('buck-chat');
+                    if (buckChatEl) {
+                        buckChatEl.style.display = 'block';
+                    }
+                    
+                    // Hide F notification
+                    const buckNotifEl = document.getElementById('buck-notif');
+                    if (buckNotifEl) {
+                        buckNotifEl.style.display = 'none';
+                    }
+                    
+                    // Auto-hide chat after 3 seconds
+                    if (gameState.buckChatTimeout) {
+                        clearTimeout(gameState.buckChatTimeout);
+                    }
+                    gameState.buckChatTimeout = setTimeout(() => {
+                        if (buckChatEl) {
+                            buckChatEl.style.display = 'none';
+                        }
+                        gameState.buckIsInteracting = false;
+                        gameState.buckChatTimeout = null;
+                    }, 3000);
+                    
+                    return; // Exit early to prevent other handlers
+                }
+            }
+            
+            // Handle F key for Gock (check distance first)
+            if (gockGroup && !gameState.isFollowingGock) {
+                const gockPos = new THREE.Vector3();
+                gockGroup.getWorldPosition(gockPos);
+                
+                // Check distance from current character (Luvu or whoever we're following)
+                let currentCharPos = luvuGroup.position.clone();
+                if (gameState.isFollowingCactus && cactusGroup) {
+                    cactusGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingIppoac && ippoacGroup) {
+                    ippoacGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingBuck && buckGroup) {
+                    buckGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingKuba && kubaGroup && kubaGroup.position) {
+                    if (kubaGroup.getWorldPosition) {
+                        kubaGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(kubaGroup.position);
+                    }
+                } else if (gameState.isFollowingBaby && babyGroup && babyGroup.position) {
+                    if (babyGroup.getWorldPosition) {
+                        babyGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(babyGroup.position);
+                    }
+                }
+                
+                const distanceToGock = currentCharPos.distanceTo(gockPos);
+                
+                if (distanceToGock < 8) { // INTERACTION_DISTANCE
+                    // Show chat bubble
+                    gameState.gockIsInteracting = true;
+                    const gockChatEl = document.getElementById('gock-chat');
+                    if (gockChatEl) {
+                        gockChatEl.style.display = 'block';
+                    }
+                    
+                    // Hide F notification
+                    const gockNotifEl = document.getElementById('gock-notif');
+                    if (gockNotifEl) {
+                        gockNotifEl.style.display = 'none';
+                    }
+                    
+                    // Auto-hide chat after 3 seconds
+                    if (gameState.gockChatTimeout) {
+                        clearTimeout(gameState.gockChatTimeout);
+                    }
+                    gameState.gockChatTimeout = setTimeout(() => {
+                        if (gockChatEl) {
+                            gockChatEl.style.display = 'none';
+                        }
+                        gameState.gockIsInteracting = false;
+                        gameState.gockChatTimeout = null;
+                    }, 3000);
+                    
+                    return; // Exit early to prevent other handlers
+                }
+            }
+
+            // Handle F key for Kuba (check distance first)
+            if (kubaGroup && !gameState.isFollowingKuba && kubaGroup.position) {
+                const kubaPos = new THREE.Vector3();
+                if (kubaGroup.getWorldPosition) {
+                    kubaGroup.getWorldPosition(kubaPos);
+                } else {
+                    kubaPos.copy(kubaGroup.position);
+                }
+                
+                // Check distance from current character (Luvu or whoever we're following)
+                let currentCharPos = luvuGroup.position.clone();
+                if (gameState.isFollowingCactus && cactusGroup) {
+                    cactusGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingIppoac && ippoacGroup) {
+                    ippoacGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingBuck && buckGroup) {
+                    buckGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingGock && gockGroup) {
+                    gockGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingBaby && babyGroup && babyGroup.position) {
+                    if (babyGroup.getWorldPosition) {
+                        babyGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(babyGroup.position);
+                    }
+                } else if (gameState.isFollowingGock && gockGroup) {
+                    gockGroup.getWorldPosition(currentCharPos);
+                }
+                
+                const distanceToKuba = currentCharPos.distanceTo(kubaPos);
+                
+                if (distanceToKuba < 8) { // INTERACTION_DISTANCE
+                    // Show chat bubble
+                    gameState.kubaIsInteracting = true;
+                    const kubaChatEl = document.getElementById('kuba-chat');
+                    if (kubaChatEl) {
+                        kubaChatEl.style.display = 'block';
+                    }
+                    
+                    // Hide F notification
+                    const kubaNotifEl = document.getElementById('kuba-notif');
+                    if (kubaNotifEl) {
+                        kubaNotifEl.style.display = 'none';
+                    }
+                    
+                    // Auto-hide chat after 3 seconds
+                    if (gameState.kubaChatTimeout) {
+                        clearTimeout(gameState.kubaChatTimeout);
+                    }
+                    gameState.kubaChatTimeout = setTimeout(() => {
+                        if (kubaChatEl) {
+                            kubaChatEl.style.display = 'none';
+                        }
+                        gameState.kubaIsInteracting = false;
+                        gameState.kubaChatTimeout = null;
+                    }, 3000);
+                    
+                    return; // Exit early to prevent other handlers
+                }
+            }
+            
+            // Handle F key for Baby (check distance first)
+            if (babyGroup && !gameState.isFollowingBaby && babyGroup.position) {
+                const babyPos = new THREE.Vector3();
+                if (babyGroup.getWorldPosition) {
+                    babyGroup.getWorldPosition(babyPos);
+                } else {
+                    babyPos.copy(babyGroup.position);
+                }
+                
+                // Check distance from current character (Luvu or whoever we're following)
+                let currentCharPos = luvuGroup.position.clone();
+                if (gameState.isFollowingCactus && cactusGroup) {
+                    cactusGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingIppoac && ippoacGroup) {
+                    ippoacGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingBuck && buckGroup) {
+                    buckGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingGock && gockGroup) {
+                    gockGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingKuba && kubaGroup && kubaGroup.position) {
+                    if (kubaGroup.getWorldPosition) {
+                        kubaGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(kubaGroup.position);
+                    }
+                }
+                
+                const distanceToBaby = currentCharPos.distanceTo(babyPos);
+                
+                if (distanceToBaby < 8) { // INTERACTION_DISTANCE
+                    // Show chat bubble
+                    gameState.babyIsInteracting = true;
+                    const babyChatEl = document.getElementById('baby-chat');
+                    if (babyChatEl) {
+                        babyChatEl.style.display = 'block';
+                    }
+                    
+                    // Hide F notification
+                    const babyNotifEl = document.getElementById('baby-notif');
+                    if (babyNotifEl) {
+                        babyNotifEl.style.display = 'none';
+                    }
+                    
+                    // Auto-hide chat after 3 seconds
+                    if (gameState.babyChatTimeout) {
+                        clearTimeout(gameState.babyChatTimeout);
+                    }
+                    gameState.babyChatTimeout = setTimeout(() => {
+                        if (babyChatEl) {
+                            babyChatEl.style.display = 'none';
+                        }
+                        gameState.babyIsInteracting = false;
+                        gameState.babyChatTimeout = null;
                     }, 3000);
                     
                     return; // Exit early to prevent other handlers
@@ -424,16 +708,43 @@ export function initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, charac
                 }
             }
             
-            // Handle Q key for Ippoac - toggle camera follow (when NOT following ippoac)
-            if (!gameState.isFollowingIppoac && !gameState.isFollowingCactus && ippoacGroup) {
+            // Handle Q key for Ippoac - switch from current character to ippoac
+            if (!gameState.isFollowingIppoac && ippoacGroup) {
+                // Get current character position (Luvu or whoever we're following)
+                let currentCharPos = luvuGroup.position.clone();
+                if (gameState.isFollowingCactus && cactusGroup) {
+                    cactusGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingBuck && buckGroup) {
+                    buckGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingGock && gockGroup) {
+                    gockGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingKuba && kubaGroup && kubaGroup.position) {
+                    if (kubaGroup.getWorldPosition) {
+                        kubaGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(kubaGroup.position);
+                    }
+                } else if (gameState.isFollowingBaby && babyGroup && babyGroup.position) {
+                    if (babyGroup.getWorldPosition) {
+                        babyGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(babyGroup.position);
+                    }
+                }
+                
                 const ippoacPos = new THREE.Vector3();
                 ippoacGroup.getWorldPosition(ippoacPos);
-                const distanceToIppoac = luvuGroup.position.distanceTo(ippoacPos);
+                const distanceToIppoac = currentCharPos.distanceTo(ippoacPos);
                 
                 if (distanceToIppoac < 8) { // INTERACTION_DISTANCE
-                    // Toggle camera follow to ippoac
+                    // Switch camera follow to ippoac
                     gameState.isFollowingIppoac = true;
-                    console.log('Toggled camera follow to ippoac:', gameState.isFollowingIppoac);
+                    gameState.isFollowingCactus = false;
+                    gameState.isFollowingBuck = false;
+                    gameState.isFollowingGock = false;
+                    gameState.isFollowingKuba = false;
+                    gameState.isFollowingBaby = false;
+                    console.log('Switched camera follow to ippoac');
                     
                     // Hide Q notification
                     const ippoacQNotifEl = document.getElementById('ippoac-q-notif');
@@ -445,36 +756,564 @@ export function initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, charac
                 }
             }
             
-            // Handle Q key for Luvu - switch back to following Luvu (when currently following cactus)
-            if (gameState.isFollowingCactus && cactusGroup) {
-                const luvuPos = luvuGroup.position.clone();
-                const distanceToLuvu = cactusGroup.position.distanceTo(luvuPos);
+            // Handle Q key for Luvu - switch back to following Luvu (when currently following any character)
+            if ((gameState.isFollowingCactus && cactusGroup) ||
+                (gameState.isFollowingBuck && buckGroup) ||
+                (gameState.isFollowingGock && gockGroup) ||
+                (gameState.isFollowingKuba && kubaGroup) ||
+                (gameState.isFollowingBaby && babyGroup)) {
+                let currentGroup = null;
+                if (gameState.isFollowingCactus) currentGroup = cactusGroup;
+                else if (gameState.isFollowingBuck) currentGroup = buckGroup;
+                else if (gameState.isFollowingGock) currentGroup = gockGroup;
+                else if (gameState.isFollowingKuba) currentGroup = kubaGroup;
+                else if (gameState.isFollowingBaby) currentGroup = babyGroup;
                 
-                if (distanceToLuvu < 16) { // INTERACTION_DISTANCE * 2 (larger range to switch back)
-                    // Switch back to following Luvu
+                if (currentGroup) {
+                    const luvuPos = luvuGroup.position.clone();
+                    let currentPos = new THREE.Vector3();
+                    if (currentGroup.getWorldPosition) {
+                        currentGroup.getWorldPosition(currentPos);
+                    } else {
+                        currentPos.copy(currentGroup.position);
+                    }
+                    const distanceToLuvu = currentPos.distanceTo(luvuPos);
+                    
+                    if (distanceToLuvu < 16) { // INTERACTION_DISTANCE * 2 (larger range to switch back)
+                        // Switch back to following Luvu
+                        gameState.isFollowingCactus = false;
+                        gameState.isFollowingBuck = false;
+                        gameState.isFollowingGock = false;
+                        gameState.isFollowingKuba = false;
+                        gameState.isFollowingBaby = false;
+                        console.log('Switched camera back to Luvu');
+                        
+                        // Hide Q notification
+                        const luvuQNotifEl = document.getElementById('luvu-q-notif');
+                        if (luvuQNotifEl) {
+                            luvuQNotifEl.style.display = 'none';
+                        }
+                        
+                        return; // Exit early to prevent other handlers from running
+                    }
+                }
+            }
+            
+            // Handle Q key for buck - switch from current character to buck
+            if (!gameState.isFollowingBuck && buckGroup) {
+                // Get current character position (Luvu or whoever we're following)
+                let currentCharPos = luvuGroup.position.clone();
+                if (gameState.isFollowingCactus && cactusGroup) {
+                    cactusGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingIppoac && ippoacGroup) {
+                    ippoacGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingGock && gockGroup) {
+                    gockGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingKuba && kubaGroup && kubaGroup.position) {
+                    if (kubaGroup.getWorldPosition) {
+                        kubaGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(kubaGroup.position);
+                    }
+                } else if (gameState.isFollowingBaby && babyGroup && babyGroup.position) {
+                    if (babyGroup.getWorldPosition) {
+                        babyGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(babyGroup.position);
+                    }
+                }
+                
+                const buckPos = new THREE.Vector3();
+                buckGroup.getWorldPosition(buckPos);
+                const distanceToBuck = currentCharPos.distanceTo(buckPos);
+                
+                if (distanceToBuck < 8) { // INTERACTION_DISTANCE
+                    // Switch camera follow to buck
+                    gameState.isFollowingBuck = true;
                     gameState.isFollowingCactus = false;
-                    console.log('Switched camera back to Luvu');
+                    gameState.isFollowingIppoac = false;
+                    gameState.isFollowingGock = false;
+                    gameState.isFollowingKuba = false;
+                    gameState.isFollowingBaby = false;
+                    console.log('Switched camera follow to buck');
                     
                     // Hide Q notification
-                    const luvuQNotifEl = document.getElementById('luvu-q-notif');
-                    if (luvuQNotifEl) {
-                        luvuQNotifEl.style.display = 'none';
+                    const buckQNotifEl = document.getElementById('buck-q-notif');
+                    if (buckQNotifEl) {
+                        buckQNotifEl.style.display = 'none';
+                    }
+                    
+                    return; // Exit early to prevent other handlers from running
+                }
+            }
+
+            // Handle Q key for gock - switch from current character to gock
+            if (!gameState.isFollowingGock && gockGroup) {
+                // Get current character position (Luvu or whoever we're following)
+                let currentCharPos = luvuGroup.position.clone();
+                if (gameState.isFollowingCactus && cactusGroup) {
+                    cactusGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingIppoac && ippoacGroup) {
+                    ippoacGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingBuck && buckGroup) {
+                    buckGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingKuba && kubaGroup && kubaGroup.position) {
+                    if (kubaGroup.getWorldPosition) {
+                        kubaGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(kubaGroup.position);
+                    }
+                } else if (gameState.isFollowingBaby && babyGroup && babyGroup.position) {
+                    if (babyGroup.getWorldPosition) {
+                        babyGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(babyGroup.position);
+                    }
+                }
+                
+                const gockPos = new THREE.Vector3();
+                gockGroup.getWorldPosition(gockPos);
+                const distanceToGock = currentCharPos.distanceTo(gockPos);
+                
+                if (distanceToGock < 8) { // INTERACTION_DISTANCE
+                    // Switch camera follow to gock
+                    gameState.isFollowingGock = true;
+                    gameState.isFollowingCactus = false;
+                    gameState.isFollowingIppoac = false;
+                    gameState.isFollowingBuck = false;
+                    gameState.isFollowingKuba = false;
+                    gameState.isFollowingBaby = false;
+                    console.log('Switched camera follow to gock');
+                    
+                    // Hide Q notification
+                    const gockQNotifEl = document.getElementById('gock-q-notif');
+                    if (gockQNotifEl) {
+                        gockQNotifEl.style.display = 'none';
+                    }
+                    
+                    return; // Exit early to prevent other handlers from running
+                }
+            }
+
+            // Handle Q key for kuba - switch from current character to kuba
+            if (!gameState.isFollowingKuba && kubaGroup && kubaGroup.position) {
+                // Get current character position (Luvu or whoever we're following)
+                let currentCharPos = luvuGroup.position.clone();
+                if (gameState.isFollowingCactus && cactusGroup) {
+                    cactusGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingIppoac && ippoacGroup) {
+                    ippoacGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingBuck && buckGroup) {
+                    buckGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingGock && gockGroup) {
+                    gockGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingBaby && babyGroup && babyGroup.position) {
+                    if (babyGroup.getWorldPosition) {
+                        babyGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(babyGroup.position);
+                    }
+                }
+                
+                const kubaPos = new THREE.Vector3();
+                if (kubaGroup.getWorldPosition) {
+                    kubaGroup.getWorldPosition(kubaPos);
+                } else {
+                    // Fallback: use position directly if getWorldPosition not available
+                    kubaPos.copy(kubaGroup.position);
+                }
+                const distanceToKuba = currentCharPos.distanceTo(kubaPos);
+                
+                if (distanceToKuba < 8) { // INTERACTION_DISTANCE
+                    // Switch camera follow to kuba
+                    gameState.isFollowingKuba = true;
+                    gameState.isFollowingCactus = false;
+                    gameState.isFollowingIppoac = false;
+                    gameState.isFollowingBuck = false;
+                    gameState.isFollowingGock = false;
+                    gameState.isFollowingBaby = false;
+                    console.log('Switched camera follow to kuba');
+                    
+                    // Hide Q notification
+                    const kubaQNotifEl = document.getElementById('kuba-q-notif');
+                    if (kubaQNotifEl) {
+                        kubaQNotifEl.style.display = 'none';
+                    }
+                    
+                    return; // Exit early to prevent other handlers from running
+                }
+            }
+
+            // Handle Q key for baby - switch from current character to baby
+            if (!gameState.isFollowingBaby && babyGroup && babyGroup.position) {
+                // Get current character position (Luvu or whoever we're following)
+                let currentCharPos = luvuGroup.position.clone();
+                if (gameState.isFollowingCactus && cactusGroup) {
+                    cactusGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingIppoac && ippoacGroup) {
+                    ippoacGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingBuck && buckGroup) {
+                    buckGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingGock && gockGroup) {
+                    gockGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingKuba && kubaGroup && kubaGroup.position) {
+                    if (kubaGroup.getWorldPosition) {
+                        kubaGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(kubaGroup.position);
+                    }
+                }
+                
+                const babyPos = new THREE.Vector3();
+                if (babyGroup.getWorldPosition) {
+                    babyGroup.getWorldPosition(babyPos);
+                } else {
+                    babyPos.copy(babyGroup.position);
+                }
+                const distanceToBaby = currentCharPos.distanceTo(babyPos);
+                
+                if (distanceToBaby < 8) { // INTERACTION_DISTANCE
+                    // Switch camera follow to baby
+                    gameState.isFollowingBaby = true;
+                    gameState.isFollowingCactus = false;
+                    gameState.isFollowingIppoac = false;
+                    gameState.isFollowingBuck = false;
+                    gameState.isFollowingGock = false;
+                    gameState.isFollowingKuba = false;
+                    console.log('Switched camera follow to baby');
+                    
+                    // Hide Q notification
+                    const babyQNotifEl = document.getElementById('baby-q-notif');
+                    if (babyQNotifEl) {
+                        babyQNotifEl.style.display = 'none';
                     }
                     
                     return; // Exit early to prevent other handlers from running
                 }
             }
             
-            // Handle Q key for cactus - toggle camera follow (when NOT following cactus)
-            if (!gameState.isFollowingCactus && cactusGroup) {
+            // Handle Q key for switching between characters (buck <-> gock, buck <-> cactus, etc.)
+            // Buck -> other characters
+            if (gameState.isFollowingBuck && buckGroup) {
+                const buckPos = new THREE.Vector3();
+                buckGroup.getWorldPosition(buckPos);
+                
+                // Buck -> Gock
+                if (gockGroup) {
+                    const gockPos = new THREE.Vector3();
+                    gockGroup.getWorldPosition(gockPos);
+                    const distanceToGock = buckPos.distanceTo(gockPos);
+                    if (distanceToGock < 8) {
+                        gameState.isFollowingBuck = false;
+                        gameState.isFollowingGock = true;
+                        console.log('Switched from buck to gock');
+                        return;
+                    }
+                }
+                
+                // Buck -> Cactus
+                if (cactusGroup) {
+                    const cactusPos = new THREE.Vector3();
+                    cactusGroup.getWorldPosition(cactusPos);
+                    const distanceToCactus = buckPos.distanceTo(cactusPos);
+                    if (distanceToCactus < 8) {
+                        gameState.isFollowingBuck = false;
+                        gameState.isFollowingCactus = true;
+                        console.log('Switched from buck to cactus');
+                        return;
+                    }
+                }
+                
+                // Buck -> Ippoac
+                if (ippoacGroup) {
+                    const ippoacPos = new THREE.Vector3();
+                    ippoacGroup.getWorldPosition(ippoacPos);
+                    const distanceToIppoac = buckPos.distanceTo(ippoacPos);
+                    if (distanceToIppoac < 8) {
+                        gameState.isFollowingBuck = false;
+                        gameState.isFollowingIppoac = true;
+                        console.log('Switched from buck to ippoac');
+                        return;
+                    }
+                }
+                
+                // Buck -> Kuba
+                if (kubaGroup && kubaGroup.position) {
+                    const kubaPos = new THREE.Vector3();
+                    if (kubaGroup.getWorldPosition) {
+                        kubaGroup.getWorldPosition(kubaPos);
+                    } else {
+                        kubaPos.copy(kubaGroup.position);
+                    }
+                    const distanceToKuba = buckPos.distanceTo(kubaPos);
+                    if (distanceToKuba < 8) {
+                        gameState.isFollowingBuck = false;
+                        gameState.isFollowingKuba = true;
+                        console.log('Switched from buck to kuba');
+                        return;
+                    }
+                }
+            }
+            
+            // Gock -> other characters
+            if (gameState.isFollowingGock && gockGroup) {
+                const gockPos = new THREE.Vector3();
+                gockGroup.getWorldPosition(gockPos);
+                
+                // Gock -> Buck
+                if (buckGroup) {
+                    const buckPos = new THREE.Vector3();
+                    buckGroup.getWorldPosition(buckPos);
+                    const distanceToBuck = gockPos.distanceTo(buckPos);
+                    if (distanceToBuck < 8) {
+                        gameState.isFollowingGock = false;
+                        gameState.isFollowingBuck = true;
+                        console.log('Switched from gock to buck');
+                        return;
+                    }
+                }
+                
+                // Gock -> Cactus
+                if (cactusGroup) {
+                    const cactusPos = new THREE.Vector3();
+                    cactusGroup.getWorldPosition(cactusPos);
+                    const distanceToCactus = gockPos.distanceTo(cactusPos);
+                    if (distanceToCactus < 8) {
+                        gameState.isFollowingGock = false;
+                        gameState.isFollowingCactus = true;
+                        console.log('Switched from gock to cactus');
+                        return;
+                    }
+                }
+                
+                // Gock -> Ippoac
+                if (ippoacGroup) {
+                    const ippoacPos = new THREE.Vector3();
+                    ippoacGroup.getWorldPosition(ippoacPos);
+                    const distanceToIppoac = gockPos.distanceTo(ippoacPos);
+                    if (distanceToIppoac < 8) {
+                        gameState.isFollowingGock = false;
+                        gameState.isFollowingIppoac = true;
+                        console.log('Switched from gock to ippoac');
+                        return;
+                    }
+                }
+                
+                // Gock -> Kuba
+                if (kubaGroup && kubaGroup.position) {
+                    const kubaPos = new THREE.Vector3();
+                    if (kubaGroup.getWorldPosition) {
+                        kubaGroup.getWorldPosition(kubaPos);
+                    } else {
+                        kubaPos.copy(kubaGroup.position);
+                    }
+                    const distanceToKuba = gockPos.distanceTo(kubaPos);
+                    if (distanceToKuba < 8) {
+                        gameState.isFollowingGock = false;
+                        gameState.isFollowingKuba = true;
+                        console.log('Switched from gock to kuba');
+                        return;
+                    }
+                }
+            }
+            
+            // Cactus -> Buck/Gock/Kuba
+            if (gameState.isFollowingCactus && cactusGroup) {
                 const cactusPos = new THREE.Vector3();
                 cactusGroup.getWorldPosition(cactusPos);
-                const distanceToCactus = luvuGroup.position.distanceTo(cactusPos);
+                
+                // Cactus -> Buck
+                if (buckGroup) {
+                    const buckPos = new THREE.Vector3();
+                    buckGroup.getWorldPosition(buckPos);
+                    const distanceToBuck = cactusPos.distanceTo(buckPos);
+                    if (distanceToBuck < 8) {
+                        gameState.isFollowingCactus = false;
+                        gameState.isFollowingBuck = true;
+                        console.log('Switched from cactus to buck');
+                        return;
+                    }
+                }
+                
+                // Cactus -> Gock
+                if (gockGroup) {
+                    const gockPos = new THREE.Vector3();
+                    gockGroup.getWorldPosition(gockPos);
+                    const distanceToGock = cactusPos.distanceTo(gockPos);
+                    if (distanceToGock < 8) {
+                        gameState.isFollowingCactus = false;
+                        gameState.isFollowingGock = true;
+                        console.log('Switched from cactus to gock');
+                        return;
+                    }
+                }
+                
+                // Cactus -> Kuba
+                if (kubaGroup && kubaGroup.position) {
+                    const kubaPos = new THREE.Vector3();
+                    if (kubaGroup.getWorldPosition) {
+                        kubaGroup.getWorldPosition(kubaPos);
+                    } else {
+                        kubaPos.copy(kubaGroup.position);
+                    }
+                    const distanceToKuba = cactusPos.distanceTo(kubaPos);
+                    if (distanceToKuba < 8) {
+                        gameState.isFollowingCactus = false;
+                        gameState.isFollowingKuba = true;
+                        console.log('Switched from cactus to kuba');
+                        return;
+                    }
+                }
+            }
+            
+            // Ippoac -> Buck/Gock/Kuba
+            if (gameState.isFollowingIppoac && ippoacGroup) {
+                const ippoacPos = new THREE.Vector3();
+                ippoacGroup.getWorldPosition(ippoacPos);
+                
+                // Ippoac -> Buck
+                if (buckGroup) {
+                    const buckPos = new THREE.Vector3();
+                    buckGroup.getWorldPosition(buckPos);
+                    const distanceToBuck = ippoacPos.distanceTo(buckPos);
+                    if (distanceToBuck < 8) {
+                        gameState.isFollowingIppoac = false;
+                        gameState.isFollowingBuck = true;
+                        console.log('Switched from ippoac to buck');
+                        return;
+                    }
+                }
+                
+                // Ippoac -> Gock
+                if (gockGroup) {
+                    const gockPos = new THREE.Vector3();
+                    gockGroup.getWorldPosition(gockPos);
+                    const distanceToGock = ippoacPos.distanceTo(gockPos);
+                    if (distanceToGock < 8) {
+                        gameState.isFollowingIppoac = false;
+                        gameState.isFollowingGock = true;
+                        console.log('Switched from ippoac to gock');
+                        return;
+                    }
+                }
+                
+                // Ippoac -> Kuba
+                if (kubaGroup && kubaGroup.position) {
+                    const kubaPos = new THREE.Vector3();
+                    if (kubaGroup.getWorldPosition) {
+                        kubaGroup.getWorldPosition(kubaPos);
+                    } else {
+                        kubaPos.copy(kubaGroup.position);
+                    }
+                    const distanceToKuba = ippoacPos.distanceTo(kubaPos);
+                    if (distanceToKuba < 8) {
+                        gameState.isFollowingIppoac = false;
+                        gameState.isFollowingKuba = true;
+                        console.log('Switched from ippoac to kuba');
+                        return;
+                    }
+                }
+            }
+
+            // Kuba -> other characters
+            if (gameState.isFollowingKuba && kubaGroup && kubaGroup.position) {
+                const kubaPos = new THREE.Vector3();
+                if (kubaGroup.getWorldPosition) {
+                    kubaGroup.getWorldPosition(kubaPos);
+                } else {
+                    kubaPos.copy(kubaGroup.position);
+                }
+                
+                // Kuba -> Buck
+                if (buckGroup) {
+                    const buckPos = new THREE.Vector3();
+                    buckGroup.getWorldPosition(buckPos);
+                    const distanceToBuck = kubaPos.distanceTo(buckPos);
+                    if (distanceToBuck < 8) {
+                        gameState.isFollowingKuba = false;
+                        gameState.isFollowingBuck = true;
+                        console.log('Switched from kuba to buck');
+                        return;
+                    }
+                }
+                
+                // Kuba -> Gock
+                if (gockGroup) {
+                    const gockPos = new THREE.Vector3();
+                    gockGroup.getWorldPosition(gockPos);
+                    const distanceToGock = kubaPos.distanceTo(gockPos);
+                    if (distanceToGock < 8) {
+                        gameState.isFollowingKuba = false;
+                        gameState.isFollowingGock = true;
+                        console.log('Switched from kuba to gock');
+                        return;
+                    }
+                }
+                
+                // Kuba -> Cactus
+                if (cactusGroup) {
+                    const cactusPos = new THREE.Vector3();
+                    cactusGroup.getWorldPosition(cactusPos);
+                    const distanceToCactus = kubaPos.distanceTo(cactusPos);
+                    if (distanceToCactus < 8) {
+                        gameState.isFollowingKuba = false;
+                        gameState.isFollowingCactus = true;
+                        console.log('Switched from kuba to cactus');
+                        return;
+                    }
+                }
+                
+                // Kuba -> Ippoac
+                if (ippoacGroup) {
+                    const ippoacPos = new THREE.Vector3();
+                    ippoacGroup.getWorldPosition(ippoacPos);
+                    const distanceToIppoac = kubaPos.distanceTo(ippoacPos);
+                    if (distanceToIppoac < 8) {
+                        gameState.isFollowingKuba = false;
+                        gameState.isFollowingIppoac = true;
+                        console.log('Switched from kuba to ippoac');
+                        return;
+                    }
+                }
+            }
+
+            // Handle Q key for cactus - switch from current character to cactus
+            if (!gameState.isFollowingCactus && cactusGroup) {
+                // Get current character position (Luvu or whoever we're following)
+                let currentCharPos = luvuGroup.position.clone();
+                if (gameState.isFollowingIppoac && ippoacGroup) {
+                    ippoacGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingBuck && buckGroup) {
+                    buckGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingGock && gockGroup) {
+                    gockGroup.getWorldPosition(currentCharPos);
+                } else if (gameState.isFollowingKuba && kubaGroup && kubaGroup.position) {
+                    if (kubaGroup.getWorldPosition) {
+                        kubaGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(kubaGroup.position);
+                    }
+                } else if (gameState.isFollowingBaby && babyGroup && babyGroup.position) {
+                    if (babyGroup.getWorldPosition) {
+                        babyGroup.getWorldPosition(currentCharPos);
+                    } else {
+                        currentCharPos.copy(babyGroup.position);
+                    }
+                }
+                
+                const cactusPos = new THREE.Vector3();
+                cactusGroup.getWorldPosition(cactusPos);
+                const distanceToCactus = currentCharPos.distanceTo(cactusPos);
                 
                 if (distanceToCactus < 8) { // INTERACTION_DISTANCE
-                    // Toggle camera follow to cactus
+                    // Switch camera follow to cactus
                     gameState.isFollowingCactus = true;
-                    console.log('Toggled camera follow to cactus:', gameState.isFollowingCactus);
+                    gameState.isFollowingIppoac = false;
+                    gameState.isFollowingBuck = false;
+                    gameState.isFollowingGock = false;
+                    gameState.isFollowingKuba = false;
+                    gameState.isFollowingBaby = false;
+                    console.log('Switched camera follow to cactus');
                     
                     // Hide Q notification
                     const cactusQNotifEl = document.getElementById('cactus-q-notif');

@@ -11,8 +11,8 @@ gltfLoader.setDRACOLoader(dracoLoader);
 
 export function createIppoac(scene) {
     const ippoacGroup = new THREE.Group();
-    ippoacGroup.position.set(10, 1, 140);
-    ippoacGroup.rotation.y = Math.PI / 2; // Face forward (same as biar and biab)
+    ippoacGroup.position.set(10, 1, 210);
+    ippoacGroup.rotation.y = -Math.PI / 2 ; // Face forward (same as biar and biab)
     scene.add(ippoacGroup);
 
     let mixer = null;

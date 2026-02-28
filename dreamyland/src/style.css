@@ -270,3 +270,39 @@ body {
     display: none;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
+
+#nav-buttons {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 30px;
+    align-items: center;
+    z-index: 10;
+    pointer-events: auto;
+}
+
+.nav-button {
+    background: transparent;
+
+    color: #A8DF65;
+    padding: 12px 40px;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: bold;
+    font-family: monospace;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    pointer-events: auto;
+}
+
+.nav-button:hover {
+    background: rgba(168, 223, 101, 0.1);
+}
+
+.nav-button.active {
+    background: #A8DF65;
+    color: #000;
+}

@@ -4,6 +4,10 @@ import { createLuvu } from '../components/Luvu.js';
 import { updateExpressionAnimation } from '../components/LuvuExpressions.js';
 import { createCactus, updateCactusAnimation } from '../components/Cactus.js';
 import { createIppoac, updateIppoacAnimation } from '../components/Ippoac.js';
+import { createBuck } from '../components/Buck.js';
+import { createGock } from '../components/Gock.js';
+import { createKuba } from '../components/Kuba.js';
+import { createBaby } from '../components/Baby.js';
 import { createParticles } from '../particles/Particles.js';
 import { createPinwheels } from '../particles/Pinwheels.js';
 import { loadAllCharacters} from '../characters/CharacterLoader.js';
@@ -19,6 +23,7 @@ import { cullObjectsOutsideView } from '../utils/FrustumCuller.js';
 
 let scene, camera, renderer;
 let luvuGroup, cactusGroup, ippoacGroup;
+let chaGroup, buckGroup, gockGroup, kubaGroup, babyGroup;
 let particles, pinwheels;
 let characterModels = [];
 let characterTimeouts = [];
@@ -50,10 +55,30 @@ const gameState = {
     terrainUpdateFrame: 0,
     isFollowingCactus: false,
     isFollowingIppoac: false,
+    isFollowingBuck: false,
+    isFollowingGock: false,
+    isFollowingKuba: false,
+    isFollowingBaby: false,
     ippoacIsInteracting: false,
     ippoacChatTimeout: null,
     ippoacAnimationKey: null,
     ippoacVel: new THREE.Vector3(),
+    buckVel: new THREE.Vector3(),
+    gockVel: new THREE.Vector3(),
+    kubaVel: new THREE.Vector3(),
+    babyVel: new THREE.Vector3(),
+    buckAnimationKey: null,
+    gockAnimationKey: null,
+    kubaAnimationKey: null,
+    buckIsInteracting: false,
+    buckChatTimeout: null,
+    gockIsInteracting: false,
+    gockChatTimeout: null,
+    kubaIsInteracting: false,
+    kubaChatTimeout: null,
+    babyIsInteracting: false,
+    babyChatTimeout: null,
+    babyAnimationKey: null,
     minescarIsInteracting: false,
     minescarChatTimeout: null,
     minescarVideoScreen: null,
@@ -67,6 +92,7 @@ const gameState = {
 // Constants
 const SPEED =39;
 const SPEED2 = 30;
+const SPEED3 = 20;
 const GRAVITY = 30;
 const JUMP = 15;
 const INTERACTION_DISTANCE = 8;
@@ -79,6 +105,10 @@ const camTarget = new THREE.Vector3();
 // Reusable camera offsets (never allocate in loop)
 const ippoacCamOffset = new THREE.Vector3(0, 30, 25);
 const cactusCamOffset = new THREE.Vector3(0, 15, 20);
+const buckCamOffset = new THREE.Vector3(0, 50, 30);
+const gockCamOffset = new THREE.Vector3(0, 50, 30);
+const kubaCamOffset = new THREE.Vector3(0, 15, 20);
+const babyCamOffset = new THREE.Vector3(0, 50, 30);
 
 export function initGame() {
     // Initialize loading screen first
@@ -117,6 +147,11 @@ export function initGame() {
     luvuGroup = createLuvu(scene);
     cactusGroup = createCactus(scene);
     ippoacGroup = createIppoac(scene);
+   
+    buckGroup = createBuck(scene);
+    gockGroup = createGock(scene);
+    kubaGroup = createKuba(scene);
+    babyGroup = createBaby(scene);
 
     // Create particles
     particles = createParticles(scene);
@@ -179,7 +214,7 @@ export function initGame() {
         biarVideoScreen = createVideoScreen(scene, '/playground/videoippo.mp4', {
             width: 25,
             height: 17,
-            position: new THREE.Vector3(10, 25, 150), // Above biar.glb (biar is at x: 10, y: 10, z: 150)
+            position: new THREE.Vector3(10, 25, 200), // Above biar.glb (biar is at x: 10, y: 10, z: 200, swapped with biab)
             rotation: new THREE.Euler(0, -Math.PI , 0), // Face forward
             distortionIntensity: 0.02,
             glitchIntensity: 0.1,
@@ -196,7 +231,7 @@ export function initGame() {
         biabVideoScreen = createVideoScreen(scene, '/playground/videoape.mp4', {
             width: 25,
             height: 17,
-            position: new THREE.Vector3(10, 25, 200), // Above biab.glb (biab is at x: 10, y: 10, z: 200)
+            position: new THREE.Vector3(10, 25, 150), // Above biab.glb (biab is at x: 10, y: 10, z: 150, swapped with biar)
             rotation: new THREE.Euler(0, -Math.PI, 0), // Face forward (same as biab)
             distortionIntensity: 0.02,
             glitchIntensity: 0.1,
@@ -222,6 +257,23 @@ export function initGame() {
         });
     } catch (error) {
         console.log('Biagr video screen creation error (green.mp4 may not exist):', error);
+    }
+
+    // Create video screen above biabb.glb model (bcl)
+    let biabbVideoScreen = null;
+    try {
+        biabbVideoScreen = createVideoScreen(scene, '/playground/bcl.mp4', {
+            width: 25,
+            height: 17,
+            position: new THREE.Vector3(-20, 25, 175), // Above biabb.glb (biabb is at x: -20, y: 10, z: 175)
+            rotation: new THREE.Euler(0, -Math.PI /2, 0), // Face forward (same as biar/biab)
+            distortionIntensity: 0.02,
+            glitchIntensity: 0.1,
+            emissiveIntensity: 1.5,
+            borderRadius: 0.08
+        });
+    } catch (error) {
+        console.log('Biabb video screen creation error (bcl.mp4 may not exist):', error);
     }
 
     // Create video screen next to tomato.glb model (leaf1)
@@ -299,7 +351,7 @@ export function initGame() {
     audioData = initAudio(gameState);
     
     // Initialize input
-    initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, characterModels, characterTimeouts, newCharacterGroup, audioData, scene);
+    initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, buckGroup, gockGroup, kubaGroup, babyGroup, characterModels, characterTimeouts, newCharacterGroup, audioData, scene);
 
     // Load characters
     loadAllCharacters(scene, characterModels, characterTimeouts, gameState, audioData).then(group => {
@@ -374,6 +426,14 @@ export function initGame() {
             targetGroup = ippoacGroup;
         } else if (gameState.isFollowingCactus) {
             targetGroup = cactusGroup;
+        } else if (gameState.isFollowingBuck) {
+            targetGroup = buckGroup;
+        } else if (gameState.isFollowingGock) {
+            targetGroup = gockGroup;
+        } else if (gameState.isFollowingKuba) {
+            targetGroup = kubaGroup;
+        } else if (gameState.isFollowingBaby) {
+            targetGroup = babyGroup;
         }
         const camAngle = Math.atan2(camera.position.x - targetGroup.position.x, camera.position.z - targetGroup.position.z);
         
@@ -391,6 +451,118 @@ export function initGame() {
                 gameState.ippoacVel.z = 0;
                 // Only update Y position for terrain (keep it on ground)
                 ippoacGroup.position.y = getTerrainY(ippoacGroup.position.x, ippoacGroup.position.z, time) + 1.2;
+            }
+        }
+
+        // Update buck only when following buck (user is controlling it)
+        if (gameState.isFollowingBuck) {
+            updateBuck(delta, time, camAngle, getTerrainY, gameState, buckGroup);
+        } else {
+            // When not following buck, stop all movement and only update Y position for terrain
+            // Always play idle animation (NlaTrack.004) when not being controlled
+            if (buckGroup && buckGroup.userData && buckGroup.userData.mixer) {
+                buckGroup.userData.mixer.update(delta);
+                const actions = buckGroup.userData.actions;
+                const idleAction = actions['NlaTrack.004'];
+                if (idleAction && buckGroup.userData.currentAction !== idleAction) {
+                    if (buckGroup.userData.currentAction) {
+                        buckGroup.userData.currentAction.fadeOut(0.2);
+                    }
+                    buckGroup.userData.currentAction = idleAction;
+                    idleAction.reset().fadeIn(0.2).play();
+                }
+                if (idleAction && !idleAction.isRunning()) {
+                    idleAction.play();
+                }
+            }
+            if (buckGroup) {
+                gameState.buckVel.x = 0;
+                gameState.buckVel.z = 0;
+                buckGroup.position.y = getTerrainY(buckGroup.position.x, buckGroup.position.z, time) + 1.2;
+            }
+        }
+
+        // Update gock only when following gock (user is controlling it)
+        if (gameState.isFollowingGock) {
+            updateGock(delta, time, camAngle, getTerrainY, gameState, gockGroup);
+        } else {
+            // When not following gock, stop all movement and only update Y position for terrain
+            // Always play idle animation (NlaTrack.004) when not being controlled
+            if (gockGroup && gockGroup.userData && gockGroup.userData.mixer) {
+                gockGroup.userData.mixer.update(delta);
+                const actions = gockGroup.userData.actions;
+                const idleAction = actions['NlaTrack.003'];
+                if (idleAction && gockGroup.userData.currentAction !== idleAction) {
+                    if (gockGroup.userData.currentAction) {
+                        gockGroup.userData.currentAction.fadeOut(0.2);
+                    }
+                    gockGroup.userData.currentAction = idleAction;
+                    idleAction.reset().fadeIn(0.2).play();
+                }
+                if (idleAction && !idleAction.isRunning()) {
+                    idleAction.play();
+                }
+            }
+            if (gockGroup) {
+                gameState.gockVel.x = 0;
+                gameState.gockVel.z = 0;
+                gockGroup.position.y = getTerrainY(gockGroup.position.x, gockGroup.position.z, time) + 1.2;
+            }
+        }
+
+        // Update kuba only when following kuba (user is controlling it)
+        if (gameState.isFollowingKuba) {
+            updateKuba(delta, time, camAngle, getTerrainY, gameState, kubaGroup);
+        } else {
+            // When not following kuba, stop all movement and only update Y position for terrain
+            // Always play idle animation (NlaTrack.001) when not being controlled
+            if (kubaGroup && kubaGroup.userData && kubaGroup.userData.mixer) {
+                kubaGroup.userData.mixer.update(delta);
+                const actions = kubaGroup.userData.actions;
+                const idleAction = actions['NlaTrack.004'];
+                if (idleAction && kubaGroup.userData.currentAction !== idleAction) {
+                    if (kubaGroup.userData.currentAction) {
+                        kubaGroup.userData.currentAction.fadeOut(0.2);
+                    }
+                    kubaGroup.userData.currentAction = idleAction;
+                    idleAction.reset().fadeIn(0.2).play();
+                }
+                if (idleAction && !idleAction.isRunning()) {
+                    idleAction.play();
+                }
+            }
+            if (kubaGroup) {
+                gameState.kubaVel.x = 0;
+                gameState.kubaVel.z = 0;
+                kubaGroup.position.y = getTerrainY(kubaGroup.position.x, kubaGroup.position.z, time) + 1.2;
+            }
+        }
+
+        // Update baby only when following baby (user is controlling it)
+        if (gameState.isFollowingBaby) {
+            updateBaby(delta, time, camAngle, getTerrainY, gameState, babyGroup);
+        } else {
+            // When not following baby, stop all movement and only update Y position for terrain
+            // Always play idle animation (NlaTrack.002) when not being controlled
+            if (babyGroup && babyGroup.userData && babyGroup.userData.mixer) {
+                babyGroup.userData.mixer.update(delta);
+                const actions = babyGroup.userData.actions;
+                const idleAction = actions['NlaTrack'];
+                if (idleAction && babyGroup.userData.currentAction !== idleAction) {
+                    if (babyGroup.userData.currentAction) {
+                        babyGroup.userData.currentAction.fadeOut(0.2);
+                    }
+                    babyGroup.userData.currentAction = idleAction;
+                    idleAction.reset().fadeIn(0.2).play();
+                }
+                if (idleAction && !idleAction.isRunning()) {
+                    idleAction.play();
+                }
+            }
+            if (babyGroup) {
+                gameState.babyVel.x = 0;
+                gameState.babyVel.z = 0;
+                babyGroup.position.y = getTerrainY(babyGroup.position.x, babyGroup.position.z, time) + 1.2;
             }
         }
         
@@ -446,6 +618,10 @@ export function initGame() {
             if (biagrVideoScreen && !biagrVideoScreen.skipUpdate) {
                 biagrVideoScreen.update(time);
             }
+            // Update biabb video screen shader
+            if (biabbVideoScreen && !biabbVideoScreen.skipUpdate) {
+                biabbVideoScreen.update(time);
+            }
             // Update leaf1 video screen shader
             if (leaf1VideoScreen && !leaf1VideoScreen.skipUpdate) {
                 leaf1VideoScreen.update(time);
@@ -477,13 +653,19 @@ export function initGame() {
             targetPosition = ippoacGroup.position;
         } else if (gameState.isFollowingCactus) {
             targetPosition = cactusGroup.position;
+        } else if (gameState.isFollowingBuck) {
+            targetPosition = buckGroup.position;
+        } else if (gameState.isFollowingGock) {
+            targetPosition = gockGroup.position;
+        } else if (gameState.isFollowingKuba) {
+            targetPosition = kubaGroup.position;
         }
         
         // Optimize all character models (only every 2 frames to reduce CPU load)
         if (gameState.terrainUpdateFrame % 2 === 0) {
             optimizeAllCharacters(characterModels, targetPosition, scene);
             
-            // Optimize main characters (cactus, ippoac) if they exist
+            // Optimize main characters (cactus, ippoac, buck, gock) if they exist
             // Use reusable objects instead of creating new Vector3 every frame
             if (cactusGroup) {
                 cactusGroup.getWorldPosition(reusableObjects.vector3_1);
@@ -494,6 +676,39 @@ export function initGame() {
                 ippoacGroup.getWorldPosition(reusableObjects.vector3_2);
                 const ippoacDistance = targetPosition.distanceTo(reusableObjects.vector3_2);
                 optimizeObjectByDistance(ippoacGroup, ippoacDistance, targetPosition);
+            }
+            if (buckGroup) {
+                buckGroup.getWorldPosition(reusableObjects.vector3_3);
+                const buckDistance = targetPosition.distanceTo(reusableObjects.vector3_3);
+                optimizeObjectByDistance(buckGroup, buckDistance, targetPosition);
+            }
+            if (gockGroup) {
+                gockGroup.getWorldPosition(reusableObjects.vector3_4);
+                const gockDistance = targetPosition.distanceTo(reusableObjects.vector3_4);
+                optimizeObjectByDistance(gockGroup, gockDistance, targetPosition);
+            }
+            if (kubaGroup) {
+                kubaGroup.getWorldPosition(reusableObjects.vector3_5);
+                const kubaDistance = targetPosition.distanceTo(reusableObjects.vector3_5);
+                optimizeObjectByDistance(kubaGroup, kubaDistance, targetPosition);
+            }
+            if (babyGroup) {
+                // Only optimize Baby if not following Baby (when following, we want full quality)
+                if (!gameState.isFollowingBaby) {
+                    babyGroup.getWorldPosition(reusableObjects.vector3_6);
+                    const babyDistance = targetPosition.distanceTo(reusableObjects.vector3_6);
+                    optimizeObjectByDistance(babyGroup, babyDistance, targetPosition);
+                } else {
+                    // When following Baby, ensure animation is not frozen and materials are restored
+                    if (babyGroup.userData && babyGroup.userData.mixer) {
+                        if (babyGroup.userData.mixer.timeScale === 0) {
+                            babyGroup.userData.mixer.timeScale = 1;
+                        }
+                    }
+                    // Restore materials to high quality when following Baby
+                    // Force optimization to restore high quality by calling with distance 0
+                    optimizeObjectByDistance(babyGroup, 0, targetPosition);
+                }
             }
         }
         
@@ -518,6 +733,7 @@ export function initGame() {
         if (biarVideoScreen) optimizeVideoScreen(biarVideoScreen);
         if (biabVideoScreen) optimizeVideoScreen(biabVideoScreen);
         if (biagrVideoScreen) optimizeVideoScreen(biagrVideoScreen);
+        if (biabbVideoScreen) optimizeVideoScreen(biabbVideoScreen);
         if (leaf1VideoScreen) optimizeVideoScreen(leaf1VideoScreen);
         if (leaf2VideoScreen) optimizeVideoScreen(leaf2VideoScreen);
         if (bgVideoScreen) optimizeVideoScreen(bgVideoScreen);
@@ -529,7 +745,7 @@ export function initGame() {
 
         // Update character interactions (only every 2 frames to reduce CPU load)
         if (gameState.terrainUpdateFrame % 2 === 0) {
-            updateCharacterInteractions(camera, gameState, luvuGroup, characterModels, characterTimeouts, newCharacterGroup, cactusGroup, ippoacGroup, time);
+            updateCharacterInteractions(camera, gameState, luvuGroup, characterModels, characterTimeouts, newCharacterGroup, cactusGroup, ippoacGroup, buckGroup, gockGroup, kubaGroup, babyGroup, time);
         }
 
         // Update FPS counter
@@ -561,6 +777,8 @@ export function initGame() {
 const cactusMoveDir = new THREE.Vector3();
 const ippoacMoveDir = new THREE.Vector3();
 const luvuMoveDir = new THREE.Vector3();
+const buckMoveDir = new THREE.Vector3();
+const gockMoveDir = new THREE.Vector3();
 
 function updateCactus(delta, time, camAngle, getTerrainY, state, cactusGroup) {
     cactusMoveDir.set(0, 0, 0);
@@ -629,10 +847,343 @@ function updateIppoac(delta, time, camAngle, getTerrainY, state, ippoacGroup) {
     ippoacGroup.position.y = getTerrainY(ippoacGroup.position.x, ippoacGroup.position.z, time) + 1.2;
 }
 
+function updateBuck(delta, time, camAngle, getTerrainY, state, buckGroup) {
+    buckMoveDir.set(0, 0, 0);
+    if (state.keys['w']) buckMoveDir.z -= 1;
+    if (state.keys['s']) buckMoveDir.z += 1;
+    if (state.keys['a']) buckMoveDir.x -= 1;
+    if (state.keys['d']) buckMoveDir.x += 1;
+    buckMoveDir.normalize();
+
+    const isRunning = buckMoveDir.lengthSq() > 0;
+    
+    // Get animation key (j, k, or l)
+    let animationKey = null;
+    if (state.keys['j']) animationKey = 'j';
+    else if (state.keys['k']) animationKey = 'k';
+    else if (state.keys['l']) animationKey = 'l';
+    state.buckAnimationKey = animationKey;
+    
+    // Update animation
+    if (buckGroup.userData && buckGroup.userData.mixer) {
+        buckGroup.userData.mixer.update(delta);
+        
+        // Handle animation switching based on keys and movement
+        const actions = buckGroup.userData.actions;
+        let targetAction = null;
+        
+        // Priority: L key (left animation) > J/K keys > movement (idle) > default idle
+        // Get animation names in reverse order (swap positions - reverse calculation)
+        const actionKeys = Object.keys(actions);
+        const reversedKeys = actionKeys.slice().reverse(); // Reverse calculation - swap positions
+        
+        if (animationKey === 'l') {
+            // L key = left animation (first in reversed list, or find by name)
+            // Try to find left animation, or use first reversed animation
+            targetAction = actions['NlaTrack.001'] || (reversedKeys.length > 0 ? actions[reversedKeys[0]] : null);
+            if (targetAction) console.log('Buck: Playing L animation (left):', targetAction.getClip().name);
+        } else if (animationKey === 'j') {
+            // J key = second animation in reversed list
+            targetAction = reversedKeys.length >= 2 ? actions[reversedKeys[1]] : (actions['NlaTrack.003'] || null);
+            if (targetAction) console.log('Buck: Playing J animation:', targetAction.getClip().name);
+        } else if (animationKey === 'k') {
+            // K key = third animation in reversed list
+            targetAction = reversedKeys.length >= 3 ? actions[reversedKeys[2]] : (actions['NlaTrack.002'] || null);
+            if (targetAction) console.log('Buck: Playing K animation:', targetAction.getClip().name);
+        } else if (isRunning) {
+            // When moving (W/A/D/S), play walk/running animation (NlaTrack.002)
+            targetAction = actions['NlaTrack'];
+        } else {
+            // Default idle when not moving (NlaTrack.004)
+            targetAction = actions['NlaTrack.004'];
+        }
+        
+        if (buckGroup.userData.currentAction !== targetAction && targetAction) {
+            if (buckGroup.userData.currentAction) {
+                buckGroup.userData.currentAction.fadeOut(0.2);
+            }
+            buckGroup.userData.currentAction = targetAction;
+            targetAction.reset().fadeIn(0.2).play();
+        }
+        
+        if (buckGroup.userData.currentAction && !buckGroup.userData.currentAction.isRunning()) {
+            buckGroup.userData.currentAction.play();
+        }
+    }
+    
+    if (isRunning) {
+        const mx = buckMoveDir.x * Math.cos(camAngle) + buckMoveDir.z * Math.sin(camAngle);
+        const mz = -buckMoveDir.x * Math.sin(camAngle) + buckMoveDir.z * Math.cos(camAngle);
+        state.buckVel.x = mx * SPEED2;
+        state.buckVel.z = mz * SPEED2;
+        const targetRot = Math.atan2(state.buckVel.x, state.buckVel.z) - Math.PI / 2;
+        buckGroup.rotation.y = lerpAngle(buckGroup.rotation.y, targetRot, 10 * delta);
+    } else {
+        state.buckVel.x *= (1 - 10 * delta);
+        state.buckVel.z *= (1 - 10 * delta);
+    }
+    
+    buckGroup.position.x += state.buckVel.x * delta;
+    buckGroup.position.z += state.buckVel.z * delta;
+    buckGroup.position.y = getTerrainY(buckGroup.position.x, buckGroup.position.z, time) + 1.2;
+}
+
+function updateGock(delta, time, camAngle, getTerrainY, state, gockGroup) {
+    gockMoveDir.set(0, 0, 0);
+    if (state.keys['w']) gockMoveDir.z -= 1;
+    if (state.keys['s']) gockMoveDir.z += 1;
+    if (state.keys['a']) gockMoveDir.x -= 1;
+    if (state.keys['d']) gockMoveDir.x += 1;
+    gockMoveDir.normalize();
+
+    const isRunning = gockMoveDir.lengthSq() > 0;
+    
+    // Get animation key (j, k, or l)
+    let animationKey = null;
+    if (state.keys['j']) animationKey = 'j';
+    else if (state.keys['k']) animationKey = 'k';
+    else if (state.keys['l']) animationKey = 'l';
+    state.gockAnimationKey = animationKey;
+    
+    // Update animation
+    if (gockGroup.userData && gockGroup.userData.mixer) {
+        gockGroup.userData.mixer.update(delta);
+        
+        // Handle animation switching based on keys and movement
+        const actions = gockGroup.userData.actions;
+        let targetAction = null;
+        
+        // Priority: L key (left animation) > J/K keys > movement (idle) > default idle
+        // Get animation names in reverse order (swap positions - reverse calculation)
+        const actionKeys = Object.keys(actions);
+        const reversedKeys = actionKeys.slice().reverse(); // Reverse calculation - swap positions
+        
+        if (animationKey === 'l') {
+            // L key = left animation (first in reversed list, or find by name)
+            targetAction = actions['NlaTrack.001'] || (reversedKeys.length > 0 ? actions[reversedKeys[0]] : null);
+            if (targetAction) console.log('Gock: Playing L animation (left):', targetAction.getClip().name);
+        } else if (animationKey === 'j') {
+            // J key = NlaTrack.004
+            targetAction = actions['NlaTrack.004'];
+            if (targetAction) console.log('Gock: Playing J animation:', targetAction.getClip().name);
+        } else if (animationKey === 'k') {
+            // K key = third animation in reversed list
+            targetAction = reversedKeys.length >= 3 ? actions[reversedKeys[2]] : (actions['NlaTrack.002'] || null);
+            if (targetAction) console.log('Gock: Playing K animation:', targetAction.getClip().name);
+        } else if (isRunning) {
+            // When moving (W/A/D/S), play walk/running animation (NlaTrack.002)
+            targetAction = actions['NlaTrack'];
+        } else {
+            // Default idle when not moving (NlaTrack.004)
+            targetAction = actions['NlaTrack.003'];
+        }
+        
+        // Only switch if we have a target action and it's different from current
+        // Use same logic as Cactus to prevent unnecessary resets
+        if (targetAction) {
+            // Check if we need to switch (different action OR state changed)
+            const needsSwitch = gockGroup.userData.currentAction !== targetAction || 
+                               gockGroup.userData.isRunning !== isRunning;
+            
+            if (needsSwitch) {
+                // Fade out current action only if it's different
+                if (gockGroup.userData.currentAction && gockGroup.userData.currentAction !== targetAction) {
+                    gockGroup.userData.currentAction.fadeOut(0.2);
+                }
+                // Set and play new action
+                gockGroup.userData.currentAction = targetAction;
+                gockGroup.userData.isRunning = isRunning;
+                targetAction.reset().fadeIn(0.2).play();
+            }
+        } else {
+            console.warn('No target animation found for Gock');
+        }
+        
+        // Ensure current action is playing (in case it stopped) - but don't reset
+        if (gockGroup.userData.currentAction && !gockGroup.userData.currentAction.isRunning()) {
+            gockGroup.userData.currentAction.play();
+        }
+    }
+    
+    if (isRunning) {
+        const mx = gockMoveDir.x * Math.cos(camAngle) + gockMoveDir.z * Math.sin(camAngle);
+        const mz = -gockMoveDir.x * Math.sin(camAngle) + gockMoveDir.z * Math.cos(camAngle);
+        state.gockVel.x = mx * SPEED3;
+        state.gockVel.z = mz * SPEED3;
+        const targetRot = Math.atan2(state.gockVel.x, state.gockVel.z) - Math.PI / 2;
+        gockGroup.rotation.y = lerpAngle(gockGroup.rotation.y, targetRot, 10 * delta);
+    } else {
+        state.gockVel.x *= (1 - 10 * delta);
+        state.gockVel.z *= (1 - 10 * delta);
+    }
+    
+    gockGroup.position.x += state.gockVel.x * delta;
+    gockGroup.position.z += state.gockVel.z * delta;
+    gockGroup.position.y = getTerrainY(gockGroup.position.x, gockGroup.position.z, time) + 1.2;
+}
+
+function updateKuba(delta, time, camAngle, getTerrainY, state, kubaGroup) {
+    const kubaMoveDir = reusableObjects.vector3_1;
+    kubaMoveDir.set(0, 0, 0);
+    if (state.keys['w']) kubaMoveDir.z -= 1;
+    if (state.keys['s']) kubaMoveDir.z += 1;
+    if (state.keys['a']) kubaMoveDir.x -= 1;
+    if (state.keys['d']) kubaMoveDir.x += 1;
+    kubaMoveDir.normalize();
+
+    const isRunning = kubaMoveDir.lengthSq() > 0;
+    
+    // Get animation key (j, k, or l)
+    let animationKey = null;
+    if (state.keys['j']) animationKey = 'j';
+    else if (state.keys['k']) animationKey = 'k';
+    else if (state.keys['l']) animationKey = 'l';
+    state.kubaAnimationKey = animationKey;
+    
+    // Update animation
+    if (kubaGroup.userData && kubaGroup.userData.mixer) {
+        kubaGroup.userData.mixer.update(delta);
+        
+        // Handle animation switching based on keys and movement
+        const actions = kubaGroup.userData.actions;
+        let targetAction = null;
+        
+        if (animationKey === 'j') {
+            targetAction = actions['NlaTrack.002'];
+        } else if (animationKey === 'k') {
+            targetAction = actions['NlaTrack.003'];
+        } else if (animationKey === 'l') {
+            targetAction = actions['NlaTrack.001'];
+        } else if (isRunning) {
+            // When moving (W/A/D/S), play walk animation (NlaTrack)
+            targetAction = actions['NlaTrack'];
+        } else {
+            // Default idle when not moving (NlaTrack.001)
+            targetAction = actions['NlaTrack.004'];
+        }
+        
+        // Only switch if we have a target action and it's different from current
+        if (targetAction) {
+            const needsSwitch = kubaGroup.userData.currentAction !== targetAction || 
+                               kubaGroup.userData.isRunning !== isRunning;
+            
+            if (needsSwitch) {
+                if (kubaGroup.userData.currentAction && kubaGroup.userData.currentAction !== targetAction) {
+                    kubaGroup.userData.currentAction.fadeOut(0.2);
+                }
+                kubaGroup.userData.currentAction = targetAction;
+                kubaGroup.userData.isRunning = isRunning;
+                targetAction.reset().fadeIn(0.2).play();
+            }
+        }
+        
+        if (kubaGroup.userData.currentAction && !kubaGroup.userData.currentAction.isRunning()) {
+            kubaGroup.userData.currentAction.play();
+        }
+    }
+    
+    if (isRunning) {
+        const mx = kubaMoveDir.x * Math.cos(camAngle) + kubaMoveDir.z * Math.sin(camAngle);
+        const mz = -kubaMoveDir.x * Math.sin(camAngle) + kubaMoveDir.z * Math.cos(camAngle);
+        state.kubaVel.x = mx * SPEED2;
+        state.kubaVel.z = mz * SPEED2;
+        const targetRot = Math.atan2(state.kubaVel.x, state.kubaVel.z) - Math.PI / 2;
+        kubaGroup.rotation.y = lerpAngle(kubaGroup.rotation.y, targetRot, 10 * delta);
+    } else {
+        state.kubaVel.x *= (1 - 10 * delta);
+        state.kubaVel.z *= (1 - 10 * delta);
+    }
+    
+    kubaGroup.position.x += state.kubaVel.x * delta;
+    kubaGroup.position.z += state.kubaVel.z * delta;
+    kubaGroup.position.y = getTerrainY(kubaGroup.position.x, kubaGroup.position.z, time) + 1.2;
+}
+
+function updateBaby(delta, time, camAngle, getTerrainY, state, babyGroup) {
+    const babyMoveDir = reusableObjects.vector3_1;
+    babyMoveDir.set(0, 0, 0);
+    if (state.keys['w']) babyMoveDir.z -= 1;
+    if (state.keys['s']) babyMoveDir.z += 1;
+    if (state.keys['a']) babyMoveDir.x -= 1;
+    if (state.keys['d']) babyMoveDir.x += 1;
+    babyMoveDir.normalize();
+
+    const isRunning = babyMoveDir.lengthSq() > 0;
+    
+    // Get animation key (j, k, or l)
+    let animationKey = null;
+    if (state.keys['j']) animationKey = 'j';
+    else if (state.keys['k']) animationKey = 'k';
+    else if (state.keys['l']) animationKey = 'l';
+    state.babyAnimationKey = animationKey;
+    
+    // Update animation - always ensure mixer timeScale is 1 when following Baby
+    if (babyGroup.userData && babyGroup.userData.mixer) {
+        // Ensure animation is not frozen (optimization might have set timeScale to 0)
+        if (babyGroup.userData.mixer.timeScale === 0) {
+            babyGroup.userData.mixer.timeScale = 1;
+        }
+        babyGroup.userData.mixer.update(delta);
+        
+        // Handle animation switching based on keys and movement
+        const actions = babyGroup.userData.actions;
+        let targetAction = null;
+        
+        if (animationKey === 'j') {
+            targetAction = actions['NlaTrack'];
+        } else if (animationKey === 'k') {
+            targetAction = actions['NlaTrack.003'];
+        } else if (animationKey === 'l') {
+            targetAction = actions['NlaTrack.004'];
+        } else if (isRunning) {
+            // When moving (W/A/D/S), play walk animation (NlaTrack.001)
+            targetAction = actions['NlaTrack.001'];
+        } else {
+            // Default idle when not moving (NlaTrack)
+            targetAction = actions['NlaTrack'];
+        }
+        
+        // Only switch if we have a target action and it's different from current
+        if (targetAction) {
+            const needsSwitch = babyGroup.userData.currentAction !== targetAction || 
+                               babyGroup.userData.isRunning !== isRunning;
+            
+            if (needsSwitch) {
+                if (babyGroup.userData.currentAction && babyGroup.userData.currentAction !== targetAction) {
+                    babyGroup.userData.currentAction.fadeOut(0.2);
+                }
+                babyGroup.userData.currentAction = targetAction;
+                babyGroup.userData.isRunning = isRunning;
+                targetAction.reset().fadeIn(0.2).play();
+            }
+        }
+        
+        if (babyGroup.userData.currentAction && !babyGroup.userData.currentAction.isRunning()) {
+            babyGroup.userData.currentAction.play();
+        }
+    }
+    
+    if (isRunning) {
+        const mx = babyMoveDir.x * Math.cos(camAngle) + babyMoveDir.z * Math.sin(camAngle);
+        const mz = -babyMoveDir.x * Math.sin(camAngle) + babyMoveDir.z * Math.cos(camAngle);
+        state.babyVel.x = mx * SPEED2;
+        state.babyVel.z = mz * SPEED2;
+        const targetRot = Math.atan2(state.babyVel.x, state.babyVel.z) - Math.PI / 2;
+        babyGroup.rotation.y = lerpAngle(babyGroup.rotation.y, targetRot, 10 * delta);
+    } else {
+        state.babyVel.x *= (1 - 10 * delta);
+        state.babyVel.z *= (1 - 10 * delta);
+    }
+    
+    babyGroup.position.x += state.babyVel.x * delta;
+    babyGroup.position.z += state.babyVel.z * delta;
+    babyGroup.position.y = getTerrainY(babyGroup.position.x, babyGroup.position.z, time) + 1.2;
+}
+
 function updateLuvu(delta, time, camAngle, getTerrainY, state, particles, luvuGroup, cactusGroup, audioData) {
-    // Only allow Luvu movement when NOT following ippoac
+    // Only allow Luvu movement when NOT following ippoac, buck, gock, kuba, or baby
     luvuMoveDir.set(0, 0, 0);
-    if (!state.isFollowingIppoac) {
+    if (!state.isFollowingIppoac && !state.isFollowingBuck && !state.isFollowingGock && !state.isFollowingKuba && !state.isFollowingBaby) {
         if (state.keys['w']) luvuMoveDir.z -= 1;
         if (state.keys['s']) luvuMoveDir.z += 1;
         if (state.keys['a']) luvuMoveDir.x -= 1;
@@ -955,15 +1506,31 @@ function updateCamera(delta, state, pinkLight, blueLight) {
         targetGroup = ippoacGroup;
     } else if (state.isFollowingCactus) {
         targetGroup = cactusGroup;
-    }
+    } else if (state.isFollowingBuck) {
+        targetGroup = buckGroup;
+    } else if (state.isFollowingGock) {
+        targetGroup = gockGroup;
+        } else if (state.isFollowingKuba) {
+            targetGroup = kubaGroup;
+        } else if (state.isFollowingBaby) {
+            targetGroup = babyGroup;
+        }
     
-    // Use different camera offset for cactus and ippoac
+    // Use different camera offset for each character
     // Use reusable offsets instead of creating new Vector3 every frame
     let currentOffset = camOffset;  // Default: Luvu offset
     if (state.isFollowingIppoac) {
         currentOffset = ippoacCamOffset;
     } else if (state.isFollowingCactus) {
         currentOffset = cactusCamOffset;
+    } else if (state.isFollowingBuck) {
+        currentOffset = buckCamOffset;
+    } else if (state.isFollowingGock) {
+        currentOffset = gockCamOffset;
+    } else if (state.isFollowingKuba) {
+        currentOffset = kubaCamOffset;
+    } else if (state.isFollowingBaby) {
+        currentOffset = babyCamOffset;
     }
     
     // Use reusable object instead of clone

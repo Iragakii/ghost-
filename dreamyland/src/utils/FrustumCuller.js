@@ -128,10 +128,11 @@ export function cullObjectsOutsideView(scene, camera, characterModels) {
                 return;
             }
             
-            // Skip main characters (always visible)
+            // Skip main characters (always visible) - but allow buck and gock to be culled when far/off-camera
             if (object.userData.isMainCharacter || object.userData.isLuvu || object.userData.isCactus || object.userData.isIppoac) {
                 return;
             }
+            // Note: buck and gock are NOT skipped here, so they will be culled when far/off-camera
             
             // Quick distance check first
             object.getWorldPosition(cullObjectPos);

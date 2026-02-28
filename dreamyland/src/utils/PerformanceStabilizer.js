@@ -12,6 +12,7 @@ export const reusableObjects = {
     vector3_3: new THREE.Vector3(),
     vector3_4: new THREE.Vector3(),
     vector3_5: new THREE.Vector3(),
+    vector3_6: new THREE.Vector3(),
     euler_1: new THREE.Euler(),
     quaternion_1: new THREE.Quaternion(),
     matrix4_1: new THREE.Matrix4(),

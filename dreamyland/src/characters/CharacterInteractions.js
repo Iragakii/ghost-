@@ -94,7 +94,7 @@ function getCharId(index) {
     return charMap[index] || `char${index + 1}`;
 }
 
-export function updateCharacterInteractions(camera, gameState, luvuGroup, characterModels, characterTimeouts, newCharacterGroup, cactusGroup, ippoacGroup, time) {
+export function updateCharacterInteractions(camera, gameState, luvuGroup, characterModels, characterTimeouts, newCharacterGroup, cactusGroup, ippoacGroup, buckGroup, gockGroup, kubaGroup, babyGroup, time) {
     gameState.closestCharIndex = -1;
     let minDistance = INTERACTION_DISTANCE;
 
@@ -244,24 +244,28 @@ export function updateCharacterInteractions(camera, gameState, luvuGroup, charac
         }
     }
 
-    // Cactus Q notification (show when NOT following cactus, and either Luvu or ippoac is close)
+    // Cactus Q notification (show when NOT following cactus, and current character is close)
     const cactusQNotifEl = getCachedElement('cactus-q-notif', 'cactusQNotif');
     if (cactusGroup && !gameState.isFollowingCactus && cactusQNotifEl) {
         const cactusPos = new THREE.Vector3();
         cactusGroup.getWorldPosition(cactusPos);
-        const distanceFromLuvu = luvuGroup.position.distanceTo(cactusPos);
-        let distanceFromIppoac = Infinity;
-        if (ippoacGroup) {
-            const ippoacPos = new THREE.Vector3();
-            ippoacGroup.getWorldPosition(ippoacPos);
-            distanceFromIppoac = ippoacPos.distanceTo(cactusPos);
+        
+        // Check distance from current character (Luvu or whoever we're following)
+        let currentCharPos = luvuGroup.position.clone();
+        if (gameState.isFollowingIppoac && ippoacGroup) {
+            ippoacGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingBuck && buckGroup) {
+            buckGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingGock && gockGroup) {
+            gockGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingKuba && kubaGroup) {
+            kubaGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingBaby && babyGroup) {
+            babyGroup.getWorldPosition(currentCharPos);
         }
         
-        // Show notification if:
-        // - Luvu is close (and not following ippoac), OR
-        // - Ippoac is close (regardless of follow state, since we want to show it when ippoac approaches)
-        const isClose = (!gameState.isFollowingIppoac && distanceFromLuvu < INTERACTION_DISTANCE) || 
-                        (distanceFromIppoac < INTERACTION_DISTANCE);
+        const distanceFromCurrent = currentCharPos.distanceTo(cactusPos);
+        const isClose = distanceFromCurrent < INTERACTION_DISTANCE;
         
         if (isClose) {
             // Update camera matrix before projecting
@@ -296,23 +300,27 @@ export function updateCharacterInteractions(camera, gameState, luvuGroup, charac
         batchStyleUpdate(cactusQNotifEl, { display: 'none' });
     }
 
-    // Cactus F notification (show when Luvu or Ippoac is close to cactus, next to Q notification)
+    // Cactus F notification (show when current character is close to cactus, next to Q notification)
     if (cactusGroup && !gameState.isFollowingCactus) {
         const cactusPos = new THREE.Vector3();
         cactusGroup.getWorldPosition(cactusPos);
         
-        // Check distance from both Luvu and Ippoac
-        const distanceFromLuvu = luvuGroup.position.distanceTo(cactusPos);
-        let distanceFromIppoac = Infinity;
-        if (ippoacGroup) {
-            const ippoacPos = new THREE.Vector3();
-            ippoacGroup.getWorldPosition(ippoacPos);
-            distanceFromIppoac = ippoacPos.distanceTo(cactusPos);
+        // Check distance from current character (Luvu or whoever we're following)
+        let currentCharPos = luvuGroup.position.clone();
+        if (gameState.isFollowingIppoac && ippoacGroup) {
+            ippoacGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingBuck && buckGroup) {
+            buckGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingGock && gockGroup) {
+            gockGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingKuba && kubaGroup) {
+            kubaGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingBaby && babyGroup) {
+            babyGroup.getWorldPosition(currentCharPos);
         }
         
-        // Show F notification if either Luvu or Ippoac is close
-        const isClose = (!gameState.isFollowingIppoac && distanceFromLuvu < INTERACTION_DISTANCE) || 
-                        (distanceFromIppoac < INTERACTION_DISTANCE);
+        const distanceFromCurrent = currentCharPos.distanceTo(cactusPos);
+        const isClose = distanceFromCurrent < INTERACTION_DISTANCE;
         
         camera.updateMatrixWorld();
         const headPos = cactusPos.clone();
@@ -369,23 +377,28 @@ export function updateCharacterInteractions(camera, gameState, luvuGroup, charac
         }
     }
     
-    // Ippoac Q notification (show when NOT following ippoac, and either Luvu or cactus is close)
+    // Ippoac Q notification (show when NOT following ippoac, and current character is close)
     const qNotifEl = getCachedElement('ippoac-q-notif', 'ippoacQNotif');
     if (ippoacGroup && !gameState.isFollowingIppoac && qNotifEl) {
         const ippoacPos = new THREE.Vector3();
         ippoacGroup.getWorldPosition(ippoacPos);
         
-        // Check distance from both Luvu and cactus
-        const distanceFromLuvu = luvuGroup.position.distanceTo(ippoacPos);
-        let distanceFromCactus = Infinity;
-        if (cactusGroup) {
-            const cactusPos = new THREE.Vector3();
-            cactusGroup.getWorldPosition(cactusPos);
-            distanceFromCactus = cactusPos.distanceTo(ippoacPos);
+        // Check distance from current character (Luvu or whoever we're following)
+        let currentCharPos = luvuGroup.position.clone();
+        if (gameState.isFollowingCactus && cactusGroup) {
+            cactusGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingBuck && buckGroup) {
+            buckGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingGock && gockGroup) {
+            gockGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingKuba && kubaGroup) {
+            kubaGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingBaby && babyGroup) {
+            babyGroup.getWorldPosition(currentCharPos);
         }
         
-        // Show notification if either Luvu or cactus is close
-        const isClose = distanceFromLuvu < INTERACTION_DISTANCE || distanceFromCactus < INTERACTION_DISTANCE;
+        const distanceFromCurrent = currentCharPos.distanceTo(ippoacPos);
+        const isClose = distanceFromCurrent < INTERACTION_DISTANCE;
         
         if (isClose) {
             // Update camera matrix before projecting
@@ -426,17 +439,22 @@ export function updateCharacterInteractions(camera, gameState, luvuGroup, charac
         const ippoacPos = new THREE.Vector3();
         ippoacGroup.getWorldPosition(ippoacPos);
         
-        // Check distance from both Luvu and Cactus
-        const distanceFromLuvu = luvuGroup.position.distanceTo(ippoacPos);
-        let distanceFromCactus = Infinity;
-        if (cactusGroup) {
-            const cactusPos = new THREE.Vector3();
-            cactusGroup.getWorldPosition(cactusPos);
-            distanceFromCactus = cactusPos.distanceTo(ippoacPos);
+        // Check distance from current character (Luvu or whoever we're following)
+        let currentCharPos = luvuGroup.position.clone();
+        if (gameState.isFollowingCactus && cactusGroup) {
+            cactusGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingBuck && buckGroup) {
+            buckGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingGock && gockGroup) {
+            gockGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingKuba && kubaGroup) {
+            kubaGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingKuba && kubaGroup) {
+            kubaGroup.getWorldPosition(currentCharPos);
         }
         
-        // Show F notification if either Luvu or Cactus is close
-        const isClose = distanceFromLuvu < INTERACTION_DISTANCE || distanceFromCactus < INTERACTION_DISTANCE;
+        const distanceFromCurrent = currentCharPos.distanceTo(ippoacPos);
+        const isClose = distanceFromCurrent < INTERACTION_DISTANCE;
         
         if (isClose) {
             camera.updateMatrixWorld();
@@ -509,8 +527,448 @@ export function updateCharacterInteractions(camera, gameState, luvuGroup, charac
         }
     }
 
-    // Luvu Q notification (show when following cactus or ippoac, to switch back)
-    if (gameState.isFollowingCactus || gameState.isFollowingIppoac) {
+    // Buck Q and F notifications (show when NOT following buck, and current character is close)
+    const buckQNotifEl = document.getElementById('buck-q-notif');
+    const buckFNotifEl = document.getElementById('buck-notif');
+    const buckChatEl = document.getElementById('buck-chat');
+    if (buckGroup && !gameState.isFollowingBuck) {
+        const buckPos = new THREE.Vector3();
+        buckGroup.getWorldPosition(buckPos);
+        
+        // Check distance from current character (Luvu or whoever we're following)
+        let currentCharPos = luvuGroup.position.clone();
+        if (gameState.isFollowingCactus && cactusGroup) {
+            cactusGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingIppoac && ippoacGroup) {
+            ippoacGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingGock && gockGroup) {
+            gockGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingKuba && kubaGroup) {
+            kubaGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingBaby && babyGroup) {
+            babyGroup.getWorldPosition(currentCharPos);
+        }
+        
+        const distanceFromCurrent = currentCharPos.distanceTo(buckPos);
+        
+        // Show notifications if current character is close
+        if (distanceFromCurrent < INTERACTION_DISTANCE) {
+            camera.updateMatrixWorld();
+            const headPos = buckPos.clone();
+            headPos.y += 14; // Above head
+            const screenPos = headPos.clone().project(camera);
+            
+            if (screenPos.x >= -1 && screenPos.x <= 1 && screenPos.y >= -1 && screenPos.y <= 1 && screenPos.z < 1 && screenPos.z > -1) {
+                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+                
+                // Show Q notification
+                if (buckQNotifEl) {
+                    batchStyleUpdate(buckQNotifEl, {
+                        display: 'block',
+                        left: x + 'px',
+                        top: (y - 40) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+                
+                // Show F notification next to Q (if not interacting)
+                if (buckFNotifEl && !gameState.buckIsInteracting) {
+                    batchStyleUpdate(buckFNotifEl, {
+                        display: 'block',
+                        left: (x + 48) + 'px', // Position to the right of Q
+                        top: (y - 40) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+                
+                // Show chat bubble if interacting
+                if (buckChatEl && gameState.buckIsInteracting) {
+                    batchStyleUpdate(buckChatEl, {
+                        display: 'block',
+                        left: x + 'px',
+                        top: (y - 60) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+            } else {
+                if (buckQNotifEl) batchStyleUpdate(buckQNotifEl, { display: 'none' });
+                if (buckFNotifEl) batchStyleUpdate(buckFNotifEl, { display: 'none' });
+                if (buckChatEl && !gameState.buckIsInteracting) {
+                    batchStyleUpdate(buckChatEl, { display: 'none' });
+                }
+            }
+        } else {
+            if (buckQNotifEl) batchStyleUpdate(buckQNotifEl, { display: 'none' });
+            if (buckFNotifEl) batchStyleUpdate(buckFNotifEl, { display: 'none' });
+            if (buckChatEl && !gameState.buckIsInteracting) {
+                batchStyleUpdate(buckChatEl, { display: 'none' });
+            }
+        }
+    } else if (buckQNotifEl && gameState.isFollowingBuck) {
+        // Hide when following buck
+        batchStyleUpdate(buckQNotifEl, { display: 'none' });
+        if (buckFNotifEl) batchStyleUpdate(buckFNotifEl, { display: 'none' });
+    }
+    
+    // Always update Buck chat position when interacting (follows buck head)
+    if (gameState.buckIsInteracting && buckGroup && buckChatEl) {
+        camera.updateMatrixWorld();
+        const buckPos = new THREE.Vector3();
+        buckGroup.getWorldPosition(buckPos);
+        const headPos = buckPos.clone();
+        headPos.y += 14; // Above head
+        const screenPos = headPos.clone().project(camera);
+        
+        if (screenPos.x >= -1 && screenPos.x <= 1 && screenPos.y >= -1 && screenPos.y <= 1 && screenPos.z < 1 && screenPos.z > -1) {
+            const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+            
+            batchStyleUpdate(buckChatEl, {
+                display: 'block',
+                left: x + 'px',
+                top: (y - 60) + 'px',
+                transform: 'translateX(-50%)'
+            });
+        } else {
+            batchStyleUpdate(buckChatEl, { display: 'none' });
+        }
+    }
+
+    // Gock Q and F notifications (show when NOT following gock, and current character is close)
+    const gockQNotifEl = document.getElementById('gock-q-notif');
+    const gockFNotifEl = document.getElementById('gock-notif');
+    const gockChatEl = document.getElementById('gock-chat');
+    if (gockGroup && !gameState.isFollowingGock) {
+        const gockPos = new THREE.Vector3();
+        gockGroup.getWorldPosition(gockPos);
+        
+        // Check distance from current character (Luvu or whoever we're following)
+        let currentCharPos = luvuGroup.position.clone();
+        if (gameState.isFollowingCactus && cactusGroup) {
+            cactusGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingIppoac && ippoacGroup) {
+            ippoacGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingBuck && buckGroup) {
+            buckGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingKuba && kubaGroup) {
+            kubaGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingBaby && babyGroup) {
+            babyGroup.getWorldPosition(currentCharPos);
+        }
+        
+        const distanceFromCurrent = currentCharPos.distanceTo(gockPos);
+        
+        // Show notifications if current character is close
+        if (distanceFromCurrent < INTERACTION_DISTANCE) {
+            camera.updateMatrixWorld();
+            const headPos = gockPos.clone();
+            headPos.y += 14; // Above head
+            const screenPos = headPos.clone().project(camera);
+            
+            if (screenPos.x >= -1 && screenPos.x <= 1 && screenPos.y >= -1 && screenPos.y <= 1 && screenPos.z < 1 && screenPos.z > -1) {
+                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+                
+                // Show Q notification
+                if (gockQNotifEl) {
+                    batchStyleUpdate(gockQNotifEl, {
+                        display: 'block',
+                        left: x + 'px',
+                        top: (y - 40) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+                
+                // Show F notification next to Q (if not interacting)
+                if (gockFNotifEl && !gameState.gockIsInteracting) {
+                    batchStyleUpdate(gockFNotifEl, {
+                        display: 'block',
+                        left: (x + 48) + 'px', // Position to the right of Q
+                        top: (y - 40) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+                
+                // Show chat bubble if interacting
+                if (gockChatEl && gameState.gockIsInteracting) {
+                    batchStyleUpdate(gockChatEl, {
+                        display: 'block',
+                        left: x + 'px',
+                        top: (y - 60) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+            } else {
+                if (gockQNotifEl) batchStyleUpdate(gockQNotifEl, { display: 'none' });
+                if (gockFNotifEl) batchStyleUpdate(gockFNotifEl, { display: 'none' });
+                if (gockChatEl && !gameState.gockIsInteracting) {
+                    batchStyleUpdate(gockChatEl, { display: 'none' });
+                }
+            }
+        } else {
+            if (gockQNotifEl) batchStyleUpdate(gockQNotifEl, { display: 'none' });
+            if (gockFNotifEl) batchStyleUpdate(gockFNotifEl, { display: 'none' });
+            if (gockChatEl && !gameState.gockIsInteracting) {
+                batchStyleUpdate(gockChatEl, { display: 'none' });
+            }
+        }
+    } else if (gockQNotifEl && gameState.isFollowingGock) {
+        // Hide when following gock
+        batchStyleUpdate(gockQNotifEl, { display: 'none' });
+        if (gockFNotifEl) batchStyleUpdate(gockFNotifEl, { display: 'none' });
+    }
+    
+    // Always update Gock chat position when interacting (follows gock head)
+    if (gameState.gockIsInteracting && gockGroup && gockChatEl) {
+        camera.updateMatrixWorld();
+        const gockPos = new THREE.Vector3();
+        gockGroup.getWorldPosition(gockPos);
+        const headPos = gockPos.clone();
+        headPos.y += 14; // Above head
+        const screenPos = headPos.clone().project(camera);
+        
+        if (screenPos.x >= -1 && screenPos.x <= 1 && screenPos.y >= -1 && screenPos.y <= 1 && screenPos.z < 1 && screenPos.z > -1) {
+            const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+            
+            batchStyleUpdate(gockChatEl, {
+                display: 'block',
+                left: x + 'px',
+                top: (y - 60) + 'px',
+                transform: 'translateX(-50%)'
+            });
+        } else {
+            batchStyleUpdate(gockChatEl, { display: 'none' });
+        }
+    }
+
+    // Kuba Q and F notifications (show when NOT following kuba, and current character is close)
+    const kubaQNotifEl = document.getElementById('kuba-q-notif');
+    const kubaFNotifEl = document.getElementById('kuba-notif');
+    const kubaChatEl = document.getElementById('kuba-chat');
+    if (kubaGroup && !gameState.isFollowingKuba) {
+        const kubaPos = new THREE.Vector3();
+        kubaGroup.getWorldPosition(kubaPos);
+        
+        // Check distance from current character (Luvu or whoever we're following)
+        let currentCharPos = luvuGroup.position.clone();
+        if (gameState.isFollowingCactus && cactusGroup) {
+            cactusGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingIppoac && ippoacGroup) {
+            ippoacGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingBuck && buckGroup) {
+            buckGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingGock && gockGroup) {
+            gockGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingBaby && babyGroup) {
+            babyGroup.getWorldPosition(currentCharPos);
+        }
+        
+        const distanceFromCurrent = currentCharPos.distanceTo(kubaPos);
+        
+        // Show notifications if current character is close
+        if (distanceFromCurrent < INTERACTION_DISTANCE) {
+            camera.updateMatrixWorld();
+            const headPos = kubaPos.clone();
+            headPos.y += 13; // Above head
+            const screenPos = headPos.clone().project(camera);
+            
+            if (screenPos.x >= -1 && screenPos.x <= 1 && screenPos.y >= -1 && screenPos.y <= 1 && screenPos.z < 1 && screenPos.z > -1) {
+                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+                
+                // Show Q notification
+                if (kubaQNotifEl) {
+                    batchStyleUpdate(kubaQNotifEl, {
+                        display: 'block',
+                        left: x + 'px',
+                        top: (y - 40) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+                
+                // Show F notification next to Q (if not interacting)
+                if (kubaFNotifEl && !gameState.kubaIsInteracting) {
+                    batchStyleUpdate(kubaFNotifEl, {
+                        display: 'block',
+                        left: (x + 48) + 'px', // Position to the right of Q
+                        top: (y - 40) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+                
+                // Show chat bubble if interacting
+                if (kubaChatEl && gameState.kubaIsInteracting) {
+                    batchStyleUpdate(kubaChatEl, {
+                        display: 'block',
+                        left: x + 'px',
+                        top: (y - 60) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+            } else {
+                if (kubaQNotifEl) batchStyleUpdate(kubaQNotifEl, { display: 'none' });
+                if (kubaFNotifEl) batchStyleUpdate(kubaFNotifEl, { display: 'none' });
+                if (kubaChatEl && !gameState.kubaIsInteracting) {
+                    batchStyleUpdate(kubaChatEl, { display: 'none' });
+                }
+            }
+        } else {
+            if (kubaQNotifEl) batchStyleUpdate(kubaQNotifEl, { display: 'none' });
+            if (kubaFNotifEl) batchStyleUpdate(kubaFNotifEl, { display: 'none' });
+            if (kubaChatEl && !gameState.kubaIsInteracting) {
+                batchStyleUpdate(kubaChatEl, { display: 'none' });
+            }
+        }
+    } else if (kubaQNotifEl && gameState.isFollowingKuba) {
+        // Hide when following kuba
+        batchStyleUpdate(kubaQNotifEl, { display: 'none' });
+        if (kubaFNotifEl) batchStyleUpdate(kubaFNotifEl, { display: 'none' });
+    }
+    
+    // Always update Kuba chat position when interacting (follows kuba head)
+    if (gameState.kubaIsInteracting && kubaGroup && kubaChatEl) {
+        camera.updateMatrixWorld();
+        const kubaPos = new THREE.Vector3();
+        if (kubaGroup.getWorldPosition) {
+            kubaGroup.getWorldPosition(kubaPos);
+        } else {
+            kubaPos.copy(kubaGroup.position);
+        }
+        const headPos = kubaPos.clone();
+        headPos.y += 9; // Above head
+        const screenPos = headPos.clone().project(camera);
+        
+        if (screenPos.x >= -1 && screenPos.x <= 1 && screenPos.y >= -1 && screenPos.y <= 1 && screenPos.z < 1 && screenPos.z > -1) {
+            const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+            
+            batchStyleUpdate(kubaChatEl, {
+                display: 'block',
+                left: x + 'px',
+                top: (y - 60) + 'px',
+                transform: 'translateX(-50%)'
+            });
+        } else {
+            batchStyleUpdate(kubaChatEl, { display: 'none' });
+        }
+    }
+
+    // Baby Q and F notifications (show when NOT following baby, and current character is close)
+    const babyQNotifEl = document.getElementById('baby-q-notif');
+    const babyFNotifEl = document.getElementById('baby-notif');
+    const babyChatEl = document.getElementById('baby-chat');
+    if (babyGroup && !gameState.isFollowingBaby) {
+        const babyPos = new THREE.Vector3();
+        babyGroup.getWorldPosition(babyPos);
+        
+        // Check distance from current character (Luvu or whoever we're following)
+        let currentCharPos = luvuGroup.position.clone();
+        if (gameState.isFollowingCactus && cactusGroup) {
+            cactusGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingIppoac && ippoacGroup) {
+            ippoacGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingBuck && buckGroup) {
+            buckGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingGock && gockGroup) {
+            gockGroup.getWorldPosition(currentCharPos);
+        } else if (gameState.isFollowingKuba && kubaGroup) {
+            kubaGroup.getWorldPosition(currentCharPos);
+        }
+        
+        const distanceFromCurrent = currentCharPos.distanceTo(babyPos);
+        
+        // Show notifications if current character is close
+        if (distanceFromCurrent < INTERACTION_DISTANCE) {
+            camera.updateMatrixWorld();
+            const headPos = babyPos.clone();
+            headPos.y += 9; // Above head
+            const screenPos = headPos.clone().project(camera);
+            
+            if (screenPos.x >= -1 && screenPos.x <= 1 && screenPos.y >= -1 && screenPos.y <= 1 && screenPos.z < 1 && screenPos.z > -1) {
+                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+                
+                // Show Q notification
+                if (babyQNotifEl) {
+                    batchStyleUpdate(babyQNotifEl, {
+                        display: 'block',
+                        left: x + 'px',
+                        top: (y - 40) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+                
+                // Show F notification next to Q (if not interacting)
+                if (babyFNotifEl && !gameState.babyIsInteracting) {
+                    batchStyleUpdate(babyFNotifEl, {
+                        display: 'block',
+                        left: (x + 48) + 'px', // Position to the right of Q
+                        top: (y - 40) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+                
+                // Show chat bubble if interacting
+                if (babyChatEl && gameState.babyIsInteracting) {
+                    batchStyleUpdate(babyChatEl, {
+                        display: 'block',
+                        left: x + 'px',
+                        top: (y - 60) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+            } else {
+                if (babyQNotifEl) batchStyleUpdate(babyQNotifEl, { display: 'none' });
+                if (babyFNotifEl) batchStyleUpdate(babyFNotifEl, { display: 'none' });
+                if (babyChatEl && !gameState.babyIsInteracting) {
+                    batchStyleUpdate(babyChatEl, { display: 'none' });
+                }
+            }
+        } else {
+            if (babyQNotifEl) batchStyleUpdate(babyQNotifEl, { display: 'none' });
+            if (babyFNotifEl) batchStyleUpdate(babyFNotifEl, { display: 'none' });
+            if (babyChatEl && !gameState.babyIsInteracting) {
+                batchStyleUpdate(babyChatEl, { display: 'none' });
+            }
+        }
+    } else if (babyQNotifEl && gameState.isFollowingBaby) {
+        // Hide when following baby
+        batchStyleUpdate(babyQNotifEl, { display: 'none' });
+        if (babyFNotifEl) batchStyleUpdate(babyFNotifEl, { display: 'none' });
+    }
+    
+    // Always update Baby chat position when interacting (follows baby head)
+    if (gameState.babyIsInteracting && babyGroup && babyChatEl) {
+        camera.updateMatrixWorld();
+        const babyPos = new THREE.Vector3();
+        if (babyGroup.getWorldPosition) {
+            babyGroup.getWorldPosition(babyPos);
+        } else {
+            babyPos.copy(babyGroup.position);
+        }
+        const headPos = babyPos.clone();
+        headPos.y += 9; // Above head
+        const screenPos = headPos.clone().project(camera);
+        
+        if (screenPos.x >= -1 && screenPos.x <= 1 && screenPos.y >= -1 && screenPos.y <= 1 && screenPos.z < 1 && screenPos.z > -1) {
+            const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+            
+            batchStyleUpdate(babyChatEl, {
+                display: 'block',
+                left: x + 'px',
+                top: (y - 60) + 'px',
+                transform: 'translateX(-50%)'
+            });
+        } else {
+            batchStyleUpdate(babyChatEl, { display: 'none' });
+        }
+    }
+
+    // Luvu Q notification (show when following cactus, ippoac, buck, gock, kuba, or baby, to switch back)
+    if (gameState.isFollowingCactus || gameState.isFollowingIppoac || gameState.isFollowingBuck || gameState.isFollowingGock || gameState.isFollowingKuba || gameState.isFollowingBaby) {
         const luvuPos = luvuGroup.position.clone();
         let distanceToLuvu = Infinity;
         
@@ -520,6 +978,30 @@ export function updateCharacterInteractions(camera, gameState, luvuGroup, charac
             const ippoacPos = new THREE.Vector3();
             ippoacGroup.getWorldPosition(ippoacPos);
             distanceToLuvu = ippoacPos.distanceTo(luvuPos);
+        } else if (gameState.isFollowingBuck && buckGroup) {
+            const buckPos = new THREE.Vector3();
+            buckGroup.getWorldPosition(buckPos);
+            distanceToLuvu = buckPos.distanceTo(luvuPos);
+        } else if (gameState.isFollowingGock && gockGroup) {
+            const gockPos = new THREE.Vector3();
+            gockGroup.getWorldPosition(gockPos);
+            distanceToLuvu = gockPos.distanceTo(luvuPos);
+        } else if (gameState.isFollowingKuba && kubaGroup) {
+            const kubaPos = new THREE.Vector3();
+            if (kubaGroup.getWorldPosition) {
+                kubaGroup.getWorldPosition(kubaPos);
+            } else {
+                kubaPos.copy(kubaGroup.position);
+            }
+            distanceToLuvu = kubaPos.distanceTo(luvuPos);
+        } else if (gameState.isFollowingBaby && babyGroup) {
+            const babyPos = new THREE.Vector3();
+            if (babyGroup.getWorldPosition) {
+                babyGroup.getWorldPosition(babyPos);
+            } else {
+                babyPos.copy(babyGroup.position);
+            }
+            distanceToLuvu = babyPos.distanceTo(luvuPos);
         }
         
         const qNotifEl = getCachedElement('luvu-q-notif', 'luvuQNotif');
