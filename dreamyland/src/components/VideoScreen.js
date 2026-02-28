@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { suppressCORSErrors } from '../utils/CORSErrorSuppressor.js';
 
 /**
  * Creates a video screen with glitch/distortion shader effects
@@ -20,28 +21,55 @@ export function createVideoScreen(scene, videoPath = '/video.mp4', options = {})
     } = options;
 
     // Create video element
+    // IMPORTANT: Set crossOrigin BEFORE setting src to avoid CORS errors
     const video = document.createElement('video');
+    video.crossOrigin = 'anonymous'; // Must be set before src
     video.src = videoPath;
     video.loop = true;
     video.muted = true;
     video.playsInline = true;
-    video.crossOrigin = 'anonymous';
+    video.preload = 'auto';
     video.style.display = 'none';
     document.body.appendChild(video);
+    
+    // Suppress CORS errors for this video (they're harmless - shader shows fallback)
+    suppressCORSErrors();
 
-    // Handle video load errors gracefully
+    // Handle video load errors gracefully (suppress CORS warnings)
     video.addEventListener('error', (e) => {
-        console.warn('Video file not found or failed to load:', videoPath);
-        console.warn('Screen will display with glitch effects but no video content');
+        const error = video.error;
+        if (error) {
+            if (error.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+                // CORS or format issue - video will show fallback pattern
+                // Don't spam console with warnings
+            } else if (error.code === MediaError.MEDIA_ERR_ABORTED) {
+                // Video loading was aborted - normal, don't warn
+            } else {
+                // Only log actual errors (not CORS issues)
+                console.warn('Video file not found or failed to load:', videoPath, 'Error code:', error.code);
+            }
+        }
+        // Screen will display with glitch effects but no video content (handled by shader)
     });
 
-    // Create video texture
+    // Create video texture with error handling for CORS issues
     const videoTexture = new THREE.VideoTexture(video);
     videoTexture.colorSpace = THREE.SRGBColorSpace;
     videoTexture.minFilter = THREE.LinearFilter;
     videoTexture.magFilter = THREE.LinearFilter;
     videoTexture.generateMipmaps = false;
     videoTexture.flipY = true; // Flip Y to correct video orientation
+    
+    // Suppress CORS errors in WebGL (they're logged but don't break rendering)
+    // The shader will show fallback pattern if video fails to load
+    const originalError = console.error;
+    const suppressCORS = (message) => {
+        if (typeof message === 'string' && message.includes('cross-origin') && message.includes('texImage2D')) {
+            // Suppress CORS errors - video will show fallback pattern instead
+            return;
+        }
+        originalError.apply(console, arguments);
+    };
 
     // Glitch/Distortion Shader Material
     const shaderMaterial = new THREE.ShaderMaterial({
@@ -194,8 +222,17 @@ export function createVideoScreen(scene, videoPath = '/video.mp4', options = {})
             shaderMaterial.uniforms.uTime.value = time;
         }
         // Update video texture each frame (required for video playback)
-        if (videoTexture && video.readyState >= 2) {
-            videoTexture.needsUpdate = true;
+        // Only update if video is ready and not in error state
+        if (videoTexture && video.readyState >= 2 && !video.error) {
+            try {
+                videoTexture.needsUpdate = true;
+            } catch (e) {
+                // Silently handle CORS errors - shader will show fallback pattern
+                if (!e.message || !e.message.includes('cross-origin')) {
+                    // Only log non-CORS errors
+                    console.warn('Video texture update error:', e);
+                }
+            }
         }
     };
 

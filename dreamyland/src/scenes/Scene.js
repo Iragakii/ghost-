@@ -18,13 +18,13 @@ export function createScene() {
         depth: true
     });
     renderer.setSize(innerWidth, innerHeight);
-    // Cap pixel ratio at 2.0 for high-DPI displays (reduced from 1.5 to restore quality)
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2.0));
+    // Cap pixel ratio at 1.5 for high-DPI displays (reduced for better performance)
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.BasicShadowMap; // Use BasicShadowMap for better performance (faster than PCFSoftShadowMap)
     // Reduce shadow map resolution for better performance
     renderer.shadowMap.autoUpdate = true;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMapping = THREE.NoToneMapping; // Disable tone mapping for better performance
     renderer.toneMappingExposure = 1.0;
     container.appendChild(renderer.domElement);
     
@@ -73,12 +73,15 @@ export function createScene() {
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
     dirLight.position.set(10, 20, 10);
     dirLight.castShadow = true;
-    // Reduced shadow map resolution from 2048 to 1024 for better performance
-    dirLight.shadow.mapSize.width = dirLight.shadow.mapSize.height = 1024;
-    dirLight.shadow.camera.left = -20;
-    dirLight.shadow.camera.right = 20;
-    dirLight.shadow.camera.top = 20;
-    dirLight.shadow.camera.bottom = -20;
+    // Reduced shadow map resolution to 512 for better performance (significant boost)
+    dirLight.shadow.mapSize.width = dirLight.shadow.mapSize.height = 512;
+    // Reduce shadow camera frustum for better performance
+    dirLight.shadow.camera.left = -15;
+    dirLight.shadow.camera.right = 15;
+    dirLight.shadow.camera.top = 15;
+    dirLight.shadow.camera.bottom = -15;
+    dirLight.shadow.camera.near = 0.1;
+    dirLight.shadow.camera.far = 50;
     scene.add(dirLight);
     
     const pinkLight = new THREE.PointLight(0xff66b2, 2, 20);

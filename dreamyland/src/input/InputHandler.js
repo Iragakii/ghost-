@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { setExpression } from '../components/LuvuExpressions.js';
 import { updateMusicButton } from '../audio/AudioManager.js';
+import { createVideoScreen } from '../components/VideoScreen.js';
 
 // Audio elements for character interactions
 let newCharSound = null;
@@ -10,7 +11,7 @@ let fatSound = null;
 let lmSound = null;
 let fVideoSound = null;
 
-export function initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, characterModels, characterTimeouts, newCharacterGroup, audioData) {
+export function initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, characterModels, characterTimeouts, newCharacterGroup, audioData, scene) {
     const { bgMusic } = audioData || {};
 
     // Keyboard input
@@ -28,6 +29,88 @@ export function initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, charac
 
         // Handle F key for character interaction
         if (e.key.toLowerCase() === 'f') {
+            // Handle F key for Cactus (check distance first)
+            if (cactusGroup && !gameState.isFollowingCactus) {
+                const cactusPos = new THREE.Vector3();
+                cactusGroup.getWorldPosition(cactusPos);
+                const distanceToCactus = luvuGroup.position.distanceTo(cactusPos);
+                
+                if (distanceToCactus < 8) { // INTERACTION_DISTANCE
+                    // Show chat bubble
+                    gameState.cactusIsInteracting = true;
+                    const cactusChatEl = document.getElementById('cactus-chat');
+                    if (cactusChatEl) {
+                        cactusChatEl.style.display = 'block';
+                    }
+                    
+                    // Hide F notification
+                    const cactusNotifEl = document.getElementById('cactus-notif');
+                    if (cactusNotifEl) {
+                        cactusNotifEl.style.display = 'none';
+                    }
+                    
+                    // Auto-hide chat after 3 seconds
+                    if (gameState.cactusChatTimeout) {
+                        clearTimeout(gameState.cactusChatTimeout);
+                    }
+                    gameState.cactusChatTimeout = setTimeout(() => {
+                        if (cactusChatEl) {
+                            cactusChatEl.style.display = 'none';
+                        }
+                        gameState.cactusIsInteracting = false;
+                        gameState.cactusChatTimeout = null;
+                    }, 3000);
+                    
+                    return; // Exit early to prevent other handlers
+                }
+            }
+            
+            // Handle F key for Handeye (check distance first)
+            let handeyeModel = null;
+            for (let i = 0; i < characterModels.length; i++) {
+                if (characterModels[i] && characterModels[i].isHandeye && characterModels[i].group) {
+                    handeyeModel = characterModels[i];
+                    break;
+                }
+            }
+            
+            if (handeyeModel && handeyeModel.group) {
+                const handeyePos = new THREE.Vector3();
+                handeyeModel.group.getWorldPosition(handeyePos);
+                const distanceToHandeye = luvuGroup.position.distanceTo(handeyePos);
+                
+                if (distanceToHandeye < 8) { // INTERACTION_DISTANCE
+                    // Show chat bubble
+                    handeyeModel.isInteracting = true;
+                    gameState.handeyeIsInteracting = true;
+                    const handeyeChatEl = document.getElementById('handeye-chat');
+                    if (handeyeChatEl) {
+                        handeyeChatEl.style.display = 'block';
+                    }
+                    
+                    // Hide F notification
+                    const handeyeNotifEl = document.getElementById('handeye-notif');
+                    if (handeyeNotifEl) {
+                        handeyeNotifEl.style.display = 'none';
+                    }
+                    
+                    // Auto-hide chat after 3 seconds
+                    if (gameState.handeyeChatTimeout) {
+                        clearTimeout(gameState.handeyeChatTimeout);
+                    }
+                    gameState.handeyeChatTimeout = setTimeout(() => {
+                        if (handeyeChatEl) {
+                            handeyeChatEl.style.display = 'none';
+                        }
+                        handeyeModel.isInteracting = false;
+                        gameState.handeyeIsInteracting = false;
+                        gameState.handeyeChatTimeout = null;
+                    }, 3000);
+                    
+                    return; // Exit early to prevent other handlers
+                }
+            }
+            
             // Handle F key for Ippoac (check distance first)
             if (ippoacGroup && !gameState.isFollowingIppoac) {
                 const ippoacPos = new THREE.Vector3();
@@ -199,6 +282,100 @@ export function initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, charac
 
         // Handle Q key
         if (e.key.toLowerCase() === 'q') {
+            // Handle Q key for Handeye - toggle eyeballp models down/up
+            let handeyeModel = null;
+            for (let i = 0; i < characterModels.length; i++) {
+                if (characterModels[i] && characterModels[i].isHandeye && characterModels[i].group) {
+                    handeyeModel = characterModels[i];
+                    break;
+                }
+            }
+            
+            if (handeyeModel && handeyeModel.group) {
+                const handeyePos = new THREE.Vector3();
+                handeyeModel.group.getWorldPosition(handeyePos);
+                const distanceToHandeye = luvuGroup.position.distanceTo(handeyePos);
+                
+                if (distanceToHandeye < 8) { // INTERACTION_DISTANCE
+                    // Toggle eyeballp models down/up
+                    gameState.eyeballpModelsDown = !gameState.eyeballpModelsDown;
+                    
+                    // Update all eyeballp models
+                    for (let i = 0; i < characterModels.length; i++) {
+                        const char = characterModels[i];
+                        if (char && char.isEyeballp && char.originalY !== undefined) {
+                            if (gameState.eyeballpModelsDown) {
+                                // Move down to y = 5
+                                char.targetY = 5;
+                            } else {
+                                // Move back to original Y position
+                                char.targetY = char.originalY;
+                            }
+                        }
+                    }
+                    
+                    console.log('Eyeballp models', gameState.eyeballpModelsDown ? 'down' : 'up');
+                    return; // Exit early to prevent other handlers
+                }
+            }
+            
+            // Handle Q key for Minescar - create video screen above retrotv
+            let minescarModel = null;
+            let retrotvModel = null;
+            for (let i = 0; i < characterModels.length; i++) {
+                if (characterModels[i] && characterModels[i].isMinescar && characterModels[i].group) {
+                    minescarModel = characterModels[i];
+                }
+                if (characterModels[i] && characterModels[i].isRetrotv && characterModels[i].group) {
+                    retrotvModel = characterModels[i];
+                }
+            }
+            
+            if (minescarModel && minescarModel.group && retrotvModel && retrotvModel.group) {
+                const minescarPos = new THREE.Vector3();
+                minescarModel.group.getWorldPosition(minescarPos);
+                const distanceToMinescar = luvuGroup.position.distanceTo(minescarPos);
+                
+                if (distanceToMinescar < 8) { // INTERACTION_DISTANCE
+                    // Get retrotv position
+                    const retrotvPos = new THREE.Vector3();
+                    retrotvModel.group.getWorldPosition(retrotvPos);
+                    
+                    // Toggle video screen: if it exists, remove it; otherwise, create it
+                    if (gameState.minescarVideoScreen && gameState.minescarVideoScreen.screenMesh) {
+                        // Remove existing video screen
+                        scene.remove(gameState.minescarVideoScreen.screenMesh);
+                        if (gameState.minescarVideoScreen.video) {
+                            gameState.minescarVideoScreen.video.pause();
+                            if (gameState.minescarVideoScreen.video.parentNode) {
+                                gameState.minescarVideoScreen.video.parentNode.removeChild(gameState.minescarVideoScreen.video);
+                            }
+                        }
+                        gameState.minescarVideoScreen = null;
+                        console.log('Piano video screen hidden');
+                    } else {
+                        // Create video screen above retrotv
+                        try {
+                            gameState.minescarVideoScreen = createVideoScreen(scene, '/pinklocation/piano.mp4', {
+                                width:20,
+                                height: 12,
+                                position: new THREE.Vector3(retrotvPos.x, retrotvPos.y + 13, retrotvPos.z), // Above retrotv
+                                rotation: new THREE.Euler(0, retrotvModel.group.rotation.y + Math.PI/2, 0), // Match retrotv rotation
+                                distortionIntensity: 0.02,
+                                glitchIntensity: 0.1,
+                                emissiveIntensity: 1.5,
+                                borderRadius: 0.08
+                            });
+                            console.log('Piano video screen shown');
+                        } catch (error) {
+                            console.log('Video screen creation error (video file may not exist):', error);
+                        }
+                    }
+                    
+                    return; // Exit early to prevent other handlers
+                }
+            }
+            
             // Handle Q key for Ippoac - switch back to following Luvu (when currently following ippoac)
             if (gameState.isFollowingIppoac && ippoacGroup) {
                 const luvuPos = luvuGroup.position.clone();

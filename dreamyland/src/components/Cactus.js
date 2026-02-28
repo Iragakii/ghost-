@@ -11,7 +11,7 @@ gltfLoader.setDRACOLoader(dracoLoader);
 
 export function createCactus(scene) {
     const cactusGroup = new THREE.Group();
-    cactusGroup.position.set(5, 0, 5);
+    cactusGroup.position.set(37, 5, 175);
     scene.add(cactusGroup);
 
     let mixer = null;

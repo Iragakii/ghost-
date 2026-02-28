@@ -62,6 +62,33 @@ export function cullObjectsOutsideView(scene, camera, characterModels) {
         characterModels.forEach((char) => {
             if (!char || !char.group) return;
             
+            // Never hide models marked with neverHide flag
+            if (char.group.userData.neverHide) {
+                // Always keep visible
+                if (char.group.userData.wasCulled) {
+                    char.group.visible = true;
+                    char.group.userData.wasCulled = false;
+                }
+                return;
+            }
+            
+            // Skip distance culling for models marked to skip it (e.g., models far from spawn)
+            if (char.group.userData.skipDistanceCull) {
+                // Still do frustum culling, but not distance-based hiding
+                cullBox.setFromObject(char.group);
+                const isVisible = frustum.intersectsBox(cullBox);
+                if (!isVisible) {
+                    char.group.visible = false;
+                    char.group.userData.wasCulled = true;
+                } else {
+                    if (char.group.userData.wasCulled) {
+                        char.group.visible = true;
+                        char.group.userData.wasCulled = false;
+                    }
+                }
+                return;
+            }
+            
             // Quick distance check first (cheaper than frustum)
             char.group.getWorldPosition(cullObjectPos);
             const distance = camera.position.distanceTo(cullObjectPos);

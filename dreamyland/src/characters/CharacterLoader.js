@@ -193,6 +193,7 @@ function loadIceBModel(scene, characterModels) {
 
 function loadIceEModel(scene, characterModels) {
     gltfLoader.load('/pinklocation/icee.glb', (gltf) => {
+        incrementLoaded();
         const modelGroup = new THREE.Group();
         // Position next to iceb.glb (which is at x: 60)
         modelGroup.position.set(180, 19, -180);
@@ -222,6 +223,322 @@ function loadIceEModel(scene, characterModels) {
     });
 }
 
+function loadMinescarModel(scene, characterModels) {
+    gltfLoader.load('/pinklocation/minescar.glb', (gltf) => {
+        incrementLoaded();
+        const modelGroup = new THREE.Group();
+        // Position next to icee.glb (which is at x: 180, y: 19, z: -180)
+        modelGroup.position.set(180,5, -200); // Positioned to the right of icee.glb
+        modelGroup.rotation.y = Math.PI / 2; // Same rotation as icee.glb
+        modelGroup.scale.set(12,12, 12); // Same scale as icee.glb
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
+        modelGroup.userData.isMinescar = true; // Mark as minescar for easy identification
+        // Store reference to character model (using next available index)
+        const nextIndex = characterModels.length;
+        characterModels[nextIndex] = {
+            group: modelGroup,
+            position: { x: 240, y: 19, z: -180 },
+            isInteracting: false,
+            isMinescar: true // Mark for easy identification
+        };
+    }, undefined, (error) => {
+        console.error('Error loading minescar.glb:', error);
+    });
+}
+
+function loadRetrotvModel(scene, characterModels) {
+    gltfLoader.load('/pinklocation/retrotv.glb', (gltf) => {
+        incrementLoaded();
+        const modelGroup = new THREE.Group();
+        // Position next to minescar.glb (which is at x: 240, y: 19, z: -180)
+        modelGroup.position.set(180, 5, -235); // Positioned to the right of minescar.glb
+        modelGroup.rotation.y = -Math.PI / 2; // Same rotation as minescar.glb
+        modelGroup.scale.set(12, 12, 12); // Same scale as minescar.glb
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
+        modelGroup.userData.isRetrotv = true; // Mark as retrotv for easy identification
+        // Store reference to character model (using next available index)
+        const nextIndex = characterModels.length;
+        characterModels[nextIndex] = {
+            group: modelGroup,
+            position: { x: 300, y: 19, z: -180 },
+            isInteracting: false,
+            isRetrotv: true // Mark for easy identification
+        };
+    }, undefined, (error) => {
+        console.error('Error loading retrotv.glb:', error);
+    });
+}
+
+function loadHandeyeModel(scene, characterModels) {
+    gltfLoader.load('/pinklocation/handeye.glb', (gltf) => {
+        incrementLoaded();
+        const modelGroup = new THREE.Group();
+        // Position next to retrotv.glb (which is at x: 180, y: 5, z: -235)
+        modelGroup.position.set(180,5, -160); // Positioned to the right of retrotv.glb
+        modelGroup.rotation.y = -Math.PI / 2; // Same rotation as retrotv.glb
+        modelGroup.scale.set(12, 12, 12); // Same scale as retrotv.glb
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        modelGroup.userData.isCharacterModel = true;
+        // Mark to exclude from aggressive distance culling (model is far from spawn)
+        modelGroup.userData.skipDistanceCull = true;
+        // Mark to never hide this model
+        modelGroup.userData.neverHide = true;
+        const nextIndex = characterModels.length;
+        characterModels[nextIndex] = {
+            group: modelGroup,
+            position: { x: 180, y: 5, z: -150 },
+            isInteracting: false,
+            isHandeye: true // Mark for easy identification
+        };
+    }, undefined, (error) => {
+        console.error('Error loading handeye.glb:', error);
+    });
+}
+
+
+function loadTomatoModel(scene, characterModels) {
+    gltfLoader.load('/pinklocation/tomato.glb', (gltf) => {
+        incrementLoaded();
+        const modelGroup = new THREE.Group();
+        // Position next to video.mp4 screen (which is at x: 290, y: 27, z: 0)
+        modelGroup.position.set(200, 25, 130); // Positioned to the right of video screen
+        modelGroup.rotation.y = Math.PI / 2; // Same rotation as video screen
+        modelGroup.scale.set(50, 50, 50); // Adjust scale as needed
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                // Explicitly clone material to preserve colors
+                if (clonedMesh.material) {
+                    if (Array.isArray(clonedMesh.material)) {
+                        clonedMesh.material = clonedMesh.material.map(mat => mat.clone());
+                    } else {
+                        clonedMesh.material = clonedMesh.material.clone();
+                    }
+                }
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
+        // Mark to exclude from aggressive distance culling (model is far from spawn)
+        modelGroup.userData.skipDistanceCull = true;
+        // Mark to never hide this model
+        modelGroup.userData.neverHide = true;
+        // Store reference to character model (using next available index)
+        const nextIndex = characterModels.length;
+        characterModels[nextIndex] = {
+            group: modelGroup,
+            position: { x: 200, y: 25, z: 80 },
+            isInteracting: false
+        };
+    }, undefined, (error) => {
+        console.error('Error loading tomato.glb:', error);
+    });
+}
+
+function loadBluetoModel(scene, characterModels) {
+    gltfLoader.load('/pinklocation/blueto.glb', (gltf) => {
+        incrementLoaded();
+        const modelGroup = new THREE.Group();
+        // Position next to tomato.glb (which is at x: 200, y: 25, z: 130)
+        modelGroup.position.set(190, 23, 290); // Positioned to the left of tomato
+        modelGroup.rotation.y = Math.PI / 2; // Same rotation as tomato
+        modelGroup.scale.set(50, 50, 50); // Adjust scale as needed
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                // Explicitly clone material to preserve colors
+                if (clonedMesh.material) {
+                    if (Array.isArray(clonedMesh.material)) {
+                        clonedMesh.material = clonedMesh.material.map(mat => mat.clone());
+                    } else {
+                        clonedMesh.material = clonedMesh.material.clone();
+                    }
+                }
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
+        // Mark to exclude from aggressive distance culling (model is far from spawn)
+        modelGroup.userData.skipDistanceCull = false;
+        // Mark to never hide this model
+        modelGroup.userData.neverHide = false;
+        // Store reference to character model (using next available index)
+        const nextIndex = characterModels.length;
+        characterModels[nextIndex] = {
+            group: modelGroup,
+            position: { x: 190, y: 25, z: 130 },
+            isInteracting: false
+        };
+    }, undefined, (error) => {
+        console.error('Error loading blueto.glb:', error);
+    });
+}
+
+function loadEyeballpModel(scene, characterModels) {
+    gltfLoader.load('/pinklocation/eyeballp.glb', (gltf) => {
+        incrementLoaded();
+        const modelGroup = new THREE.Group();
+        // Position next to video.mp4 screen (which is at x: 290, y: 27, z: 0)
+        modelGroup.position.set(220, 27, 0); // Positioned to the right of video screen
+        modelGroup.rotation.y = Math.PI + 110; // Same rotation as video screen
+        modelGroup.scale.set(12, 12, 12); // Adjust scale as needed
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
+        modelGroup.userData.isEyeballp = true; // Mark as eyeballp for animation
+        // Mark to exclude from aggressive distance culling (model is far from spawn)
+        modelGroup.userData.skipDistanceCull = true;
+        // Store reference to character model (using next available index)
+        const nextIndex = characterModels.length;
+        characterModels[nextIndex] = {
+            group: modelGroup,
+            position: { x: 220, y: 27, z: 0 },
+            isInteracting: false,
+            isEyeballp: true, // Mark for animation
+            baseRotationY: Math.PI + 110, // Store base rotation
+            originalY: 27, // Store original Y position
+            targetY: 27 // Target Y position for smooth animation
+        };
+    }, undefined, (error) => {
+        console.error('Error loading eyeballp.glb:', error);
+    });
+}
+function loadEyeballpModel2(scene, characterModels) {
+    gltfLoader.load('/pinklocation/eyeballp.glb', (gltf) => {
+        incrementLoaded();
+        const modelGroup = new THREE.Group();
+        // Position next to video.mp4 screen (which is at x: 290, y: 27, z: 0)
+        modelGroup.position.set(170, 35, -30); // Positioned to the right of video screen
+        modelGroup.rotation.y = Math.PI + 116; // Same rotation as video screen
+        modelGroup.scale.set(12, 12, 12); // Adjust scale as needed
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
+        modelGroup.userData.isEyeballp = true; // Mark as eyeballp for animation
+        // Mark to exclude from aggressive distance culling (model is far from spawn)
+        modelGroup.userData.skipDistanceCull = true;
+        // Store reference to character model (using next available index)
+        const nextIndex = characterModels.length;
+        characterModels[nextIndex] = {
+            group: modelGroup,
+            position: { x: 220, y: 27, z: 0 },
+            isInteracting: false,
+            isEyeballp: true, // Mark for animation
+            baseRotationY: Math.PI + 116, // Store base rotation
+            originalY: 35, // Store original Y position
+            targetY: 35 // Target Y position for smooth animation
+        };
+    }, undefined, (error) => {
+        console.error('Error loading eyeballp.glb:', error);
+    });
+}
+
+function loadEyeballpModel3(scene, characterModels) {
+    gltfLoader.load('/pinklocation/eyeballp.glb', (gltf) => {
+        incrementLoaded();
+        const modelGroup = new THREE.Group();
+        // Position next to video.mp4 screen (which is at x: 290, y: 27, z: 0)
+        modelGroup.position.set(140, 35, 30); // Positioned to the right of video screen
+        modelGroup.rotation.y = Math.PI + 97; // Same rotation as video screen
+        modelGroup.scale.set(12, 12, 12); // Adjust scale as needed
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
+        modelGroup.userData.isEyeballp = true; // Mark as eyeballp for animation
+        // Mark to exclude from aggressive distance culling (model is far from spawn)
+        modelGroup.userData.skipDistanceCull = true;
+        // Store reference to character model (using next available index)
+        const nextIndex = characterModels.length;
+        characterModels[nextIndex] = {
+            group: modelGroup,
+            position: { x: 220, y: 27, z: 0 },
+            isInteracting: false,
+            isEyeballp: true, // Mark for animation
+            baseRotationY: Math.PI + 97, // Store base rotation
+            originalY: 35, // Store original Y position
+            targetY: 35 // Target Y position for smooth animation
+        };
+    }, undefined, (error) => {
+        console.error('Error loading eyeballp.glb:', error);
+    });
+}
+
 function loadIceOModel(scene, characterModels) {
     gltfLoader.load('/pinklocation/iceo.glb', (gltf) => {
         const modelGroup = new THREE.Group();
@@ -242,6 +559,10 @@ function loadIceOModel(scene, characterModels) {
         scene.add(modelGroup);
         // Mark as character model for frustum culling
         modelGroup.userData.isCharacterModel = true;
+        // Mark to exclude from aggressive distance culling (model is far from spawn)
+        modelGroup.userData.skipDistanceCull = true;
+        // Mark to never hide this model
+        modelGroup.userData.neverHide = true;
         // Store reference to character model (using index 19)
         characterModels[19] = {
             group: modelGroup,
@@ -384,6 +705,12 @@ function loadLotusModel(scene, characterModels) {
         });
 
         scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
+        // Mark to exclude from aggressive distance culling (model is far from spawn)
+        modelGroup.userData.skipDistanceCull = false;
+        // Mark to never hide this model
+        modelGroup.userData.neverHide = false;
         characterModels[10] = {
             group: modelGroup,
             position: { x: -60, y: 7, z: 10 },
@@ -410,7 +737,14 @@ function loadLotusModel2(scene, characterModels) {
             }
         });
 
+
         scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
+        // Mark to exclude from aggressive distance culling (model is far from spawn)
+        modelGroup.userData.skipDistanceCull = false;
+        // Mark to never hide this model
+        modelGroup.userData.neverHide = false;
         characterModels[15] = {
             group: modelGroup,
             position: { x: -60, y: 7, z: 20 },
@@ -465,6 +799,12 @@ function loadLotus2Model(scene, characterModels) {
         });
 
         scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
+        // Mark to exclude from aggressive distance culling (model is far from spawn)
+        modelGroup.userData.skipDistanceCull = true;
+        // Mark to never hide this model
+        modelGroup.userData.neverHide = true;
         characterModels[12] = {
             group: modelGroup,
             position: { x: -46, y: 7, z: 10 },
@@ -564,7 +904,7 @@ function loadPPModel(scene, characterModels) {
 function loadLMModel(scene, characterModels) {
     gltfLoader.load('/lm.glb', (gltf) => {
         const modelGroup = new THREE.Group();
-        modelGroup.position.set(-199, 4, -50);
+        modelGroup.position.set(-199, 4, -43);
         modelGroup.rotation.y = Math.PI / 4;
         modelGroup.scale.set(6, 6, 6);
 
@@ -598,7 +938,7 @@ function loadLMModel(scene, characterModels) {
 function loadFATModel(scene, characterModels) {
     gltfLoader.load('/fat.glb', (gltf) => {
         const modelGroup = new THREE.Group();
-        modelGroup.position.set(-180, 7, -53);
+        modelGroup.position.set(-180, 7, -33);
         modelGroup.rotation.y = Math.PI / 4;
         modelGroup.scale.set(18, 18, 18);
 
@@ -627,7 +967,7 @@ function loadFATModel(scene, characterModels) {
     });
 }
 
-export function loadBiarModel(scene) {
+function loadBiarModel(scene , characterModels) {
     gltfLoader.load('/playground/biar.glb', (gltf) => {
         incrementLoaded();
         const modelGroup = new THREE.Group();
@@ -646,12 +986,62 @@ export function loadBiarModel(scene) {
         });
 
         scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
+        // Store reference to character model (using next available index)
+        const nextIndex = characterModels.length;
+        characterModels[nextIndex] = {
+            group: modelGroup,
+            position: { x: 10, y: 10, z: 150 },
+            isInteracting: false
+        };
     }, undefined, (error) => {
         console.error('Error loading biar.glb:', error);
     });
 }
 
-export function loadBiabModel(scene) {
+function loadBiagrModel(scene, characterModels) {
+    gltfLoader.load('/pinklocation/biagr.glb', (gltf) => {
+        incrementLoaded();
+        const modelGroup = new THREE.Group();
+        // Position next to biar.glb (which is at x: 10, y: 10, z: 150)
+        modelGroup.position.set(30, 10, 175); // To the right of biar
+        modelGroup.rotation.y = Math.PI * 2 ; // Same rotation as biar
+        modelGroup.scale.set(12, 12, 12); // Same scale as biar
+
+        gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const clonedMesh = child.clone();
+                // Explicitly clone material to preserve colors
+                if (clonedMesh.material) {
+                    if (Array.isArray(clonedMesh.material)) {
+                        clonedMesh.material = clonedMesh.material.map(mat => mat.clone());
+                    } else {
+                        clonedMesh.material = clonedMesh.material.clone();
+                    }
+                }
+                clonedMesh.castShadow = true;
+                clonedMesh.receiveShadow = true;
+                modelGroup.add(clonedMesh);
+            }
+        });
+
+        scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
+        // Store reference to character model (using next available index)
+        const nextIndex = characterModels.length;
+        characterModels[nextIndex] = {
+            group: modelGroup,
+            position: { x: 20, y: 10, z: 150 },
+            isInteracting: false
+        };
+    }, undefined, (error) => {
+        console.error('Error loading biagr.glb:', error);
+    });
+}
+
+function loadBiabModel(scene , characterModels) {
     gltfLoader.load('/playground/biab.glb', (gltf) => {
         incrementLoaded();
         const modelGroup = new THREE.Group();
@@ -670,6 +1060,15 @@ export function loadBiabModel(scene) {
         });
 
         scene.add(modelGroup);
+        // Mark as character model for frustum culling
+        modelGroup.userData.isCharacterModel = true;
+        // Store reference to character model (using next available index)
+        const nextIndex = characterModels.length;
+        characterModels[nextIndex] = {
+            group: modelGroup,
+            position: { x: 10, y: 10, z: 200 },
+            isInteracting: false
+        };
     }, undefined, (error) => {
         console.error('Error loading biab.glb:', error);
     });
@@ -739,17 +1138,26 @@ export function loadAllCharacters(scene, characterModels, characterTimeouts, gam
     loadGLModel(scene, characterModels); // Load gl.glb next to pink characters
     loadIceBModel(scene, characterModels); // Load iceb.glb
     loadIceEModel(scene, characterModels); // Load icee.glb
+    loadMinescarModel(scene, characterModels); // Load minescar.glb next to icee.glb
+    loadRetrotvModel(scene, characterModels); // Load retrotv.glb next to minescar.glb
+    loadHandeyeModel(scene, characterModels); // Load handeye.glb next to retrotv.glb
+    loadTomatoModel(scene, characterModels); // Load tomato.glb next to video.mp4 screen
+    loadBluetoModel(scene, characterModels); // Load blueto.glb next to tomato model
+    loadEyeballpModel(scene, characterModels); // Load eyeballp.glb next to video.mp4 screen
     loadIceOModel(scene, characterModels); // Load iceo.glb
     loadIceRModel(scene, characterModels); // Load icer.glb
     loadIceVModel(scene, characterModels); // Load icev.glb
     loadFModel(scene, characterModels);
+    loadEyeballpModel2(scene, characterModels);
+    loadEyeballpModel3(scene, characterModels)
     loadAngleModel(scene, characterModels);
     loadLotusModel(scene, characterModels);
     loadLotusModel2(scene, characterModels);
     loadDaisyModel(scene, characterModels);
     loadLotus2Model(scene, characterModels);
-   
-    
+    loadBiabModel(scene , characterModels)
+    loadBiarModel(scene , characterModels)
+    loadBiagrModel(scene, characterModels); // Load biagr.glb next to biar.glb
     loadPinkfModel(scene, characterModels);
   
     loadVEModel(scene, characterModels);

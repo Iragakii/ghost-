@@ -295,6 +295,79 @@ export function updateCharacterInteractions(camera, gameState, luvuGroup, charac
         // Hide when following cactus
         batchStyleUpdate(cactusQNotifEl, { display: 'none' });
     }
+
+    // Cactus F notification (show when Luvu or Ippoac is close to cactus, next to Q notification)
+    if (cactusGroup && !gameState.isFollowingCactus) {
+        const cactusPos = new THREE.Vector3();
+        cactusGroup.getWorldPosition(cactusPos);
+        
+        // Check distance from both Luvu and Ippoac
+        const distanceFromLuvu = luvuGroup.position.distanceTo(cactusPos);
+        let distanceFromIppoac = Infinity;
+        if (ippoacGroup) {
+            const ippoacPos = new THREE.Vector3();
+            ippoacGroup.getWorldPosition(ippoacPos);
+            distanceFromIppoac = ippoacPos.distanceTo(cactusPos);
+        }
+        
+        // Show F notification if either Luvu or Ippoac is close
+        const isClose = (!gameState.isFollowingIppoac && distanceFromLuvu < INTERACTION_DISTANCE) || 
+                        (distanceFromIppoac < INTERACTION_DISTANCE);
+        
+        camera.updateMatrixWorld();
+        const headPos = cactusPos.clone();
+        headPos.y += 9; // Above head (same as Q notification)
+        const screenPos = headPos.clone().project(camera);
+        
+        const cactusFNotifEl = document.getElementById('cactus-notif');
+        const cactusChatEl = document.getElementById('cactus-chat');
+        
+        if (isClose) {
+            if (screenPos.x >= -1 && screenPos.x <= 1 && screenPos.y >= -1 && screenPos.y <= 1 && screenPos.z < 1 && screenPos.z > -1) {
+                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+                
+                if (cactusFNotifEl && !gameState.cactusIsInteracting) {
+                    batchStyleUpdate(cactusFNotifEl, {
+                        display: 'block',
+                        left: (x + 48) + 'px', // Position to the right of Q (increased spacing)
+                        top: (y - 40) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+            } else {
+                if (cactusFNotifEl) batchStyleUpdate(cactusFNotifEl, { display: 'none' });
+            }
+        } else {
+            if (cactusFNotifEl) batchStyleUpdate(cactusFNotifEl, { display: 'none' });
+        }
+        
+        // Always update chat position when interacting (follows cactus head)
+        if (gameState.cactusIsInteracting && cactusChatEl) {
+            if (screenPos.x >= -1 && screenPos.x <= 1 && screenPos.y >= -1 && screenPos.y <= 1 && screenPos.z < 1 && screenPos.z > -1) {
+                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+                
+                batchStyleUpdate(cactusChatEl, {
+                    display: 'block',
+                    left: x + 'px',
+                    top: (y - 60) + 'px',
+                    transform: 'translateX(-50%)'
+                });
+            } else {
+                batchStyleUpdate(cactusChatEl, { display: 'none' });
+            }
+        } else if (cactusChatEl && !gameState.cactusIsInteracting) {
+            batchStyleUpdate(cactusChatEl, { display: 'none' });
+        }
+    } else {
+        const cactusFNotifEl = document.getElementById('cactus-notif');
+        const cactusChatEl = document.getElementById('cactus-chat');
+        if (cactusFNotifEl) batchStyleUpdate(cactusFNotifEl, { display: 'none' });
+        if (cactusChatEl && !gameState.cactusIsInteracting) {
+            batchStyleUpdate(cactusChatEl, { display: 'none' });
+        }
+    }
     
     // Ippoac Q notification (show when NOT following ippoac, and either Luvu or cactus is close)
     const qNotifEl = getCachedElement('ippoac-q-notif', 'ippoacQNotif');
@@ -770,6 +843,163 @@ export function updateCharacterInteractions(camera, gameState, luvuGroup, charac
             } else {
                 chatEl.style.display = 'none';
                 notifEl.style.display = 'none';
+            }
+        }
+    }
+
+    // Minescar Q and F notifications
+    let minescarModel = null;
+    for (let i = 0; i < characterModels.length; i++) {
+        if (characterModels[i] && characterModels[i].isMinescar && characterModels[i].group) {
+            minescarModel = characterModels[i];
+            break;
+        }
+    }
+
+    if (minescarModel && minescarModel.group) {
+        const minescarPos = new THREE.Vector3();
+        minescarModel.group.getWorldPosition(minescarPos);
+        const distanceToMinescar = luvuGroup.position.distanceTo(minescarPos);
+        
+        if (distanceToMinescar < INTERACTION_DISTANCE) {
+            camera.updateMatrixWorld();
+            const headPos = minescarPos.clone();
+            headPos.y += 5;
+            // Above head
+            const screenPos = headPos.clone().project(camera);
+            
+            const minescarQNotifEl = document.getElementById('minescar-q-notif');
+            const minescarFNotifEl = document.getElementById('minescar-notif');
+            const minescarChatEl = document.getElementById('minescar-chat');
+            
+            if (screenPos.x >= -1 && screenPos.x <= 1 &&
+                screenPos.y >= -1 && screenPos.y <= 1 &&
+                screenPos.z < 1 && screenPos.z > -1) {
+                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+                
+                // Show Q notification
+                if (minescarQNotifEl) {
+                    batchStyleUpdate(minescarQNotifEl, {
+                        display: 'block',
+                        left: x + 'px',
+                        top: (y - 40) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+                
+                // Show F notification next to Q
+                if (minescarFNotifEl && !minescarModel.isInteracting) {
+                    batchStyleUpdate(minescarFNotifEl, {
+                        display: 'block',
+                        left: (x + 48) + 'px', // Position to the right of Q
+                        top: (y - 40) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+                
+                // Show chat bubble if interacting
+                if (minescarChatEl && minescarModel.isInteracting) {
+                    batchStyleUpdate(minescarChatEl, {
+                        display: 'block',
+                        left: x + 'px',
+                        top: (y - 60) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+            } else {
+                if (minescarQNotifEl) batchStyleUpdate(minescarQNotifEl, { display: 'none' });
+                if (minescarFNotifEl) batchStyleUpdate(minescarFNotifEl, { display: 'none' });
+                if (minescarChatEl && !minescarModel.isInteracting) {
+                    batchStyleUpdate(minescarChatEl, { display: 'none' });
+                }
+            }
+        } else {
+            const minescarQNotifEl = document.getElementById('minescar-q-notif');
+            const minescarFNotifEl = document.getElementById('minescar-notif');
+            const minescarChatEl = document.getElementById('minescar-chat');
+            if (minescarQNotifEl) batchStyleUpdate(minescarQNotifEl, { display: 'none' });
+            if (minescarFNotifEl) batchStyleUpdate(minescarFNotifEl, { display: 'none' });
+            if (minescarChatEl && !minescarModel.isInteracting) {
+                batchStyleUpdate(minescarChatEl, { display: 'none' });
+            }
+        }
+    }
+
+    // Handeye Q and F notifications
+    let handeyeModel = null;
+    for (let i = 0; i < characterModels.length; i++) {
+        if (characterModels[i] && characterModels[i].isHandeye && characterModels[i].group) {
+            handeyeModel = characterModels[i];
+            break;
+        }
+    }
+
+    if (handeyeModel && handeyeModel.group) {
+        const handeyePos = new THREE.Vector3();
+        handeyeModel.group.getWorldPosition(handeyePos);
+        const distanceToHandeye = luvuGroup.position.distanceTo(handeyePos);
+        
+        if (distanceToHandeye < INTERACTION_DISTANCE) {
+            camera.updateMatrixWorld();
+            const headPos = handeyePos.clone();
+            headPos.y += 8; // Above head
+            const screenPos = headPos.clone().project(camera);
+            
+            const handeyeQNotifEl = document.getElementById('handeye-q-notif');
+            const handeyeFNotifEl = document.getElementById('handeye-notif');
+            const handeyeChatEl = document.getElementById('handeye-chat');
+            
+            if (screenPos.x >= -1 && screenPos.x <= 1 &&
+                screenPos.y >= -1 && screenPos.y <= 1 &&
+                screenPos.z < 1 && screenPos.z > -1) {
+                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+                
+                // Show Q notification
+                if (handeyeQNotifEl) {
+                    batchStyleUpdate(handeyeQNotifEl, {
+                        display: 'block',
+                        left: x + 'px',
+                        top: (y - 40) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+                
+                // Show F notification next to Q
+                if (handeyeFNotifEl && !handeyeModel.isInteracting) {
+                    batchStyleUpdate(handeyeFNotifEl, {
+                        display: 'block',
+                        left: (x + 48) + 'px', // Position to the right of Q
+                        top: (y - 40) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+                
+                // Show chat bubble if interacting
+                if (handeyeChatEl && handeyeModel.isInteracting) {
+                    batchStyleUpdate(handeyeChatEl, {
+                        display: 'block',
+                        left: x + 'px',
+                        top: (y - 60) + 'px',
+                        transform: 'translateX(-50%)'
+                    });
+                }
+            } else {
+                if (handeyeQNotifEl) batchStyleUpdate(handeyeQNotifEl, { display: 'none' });
+                if (handeyeFNotifEl) batchStyleUpdate(handeyeFNotifEl, { display: 'none' });
+                if (handeyeChatEl && !handeyeModel.isInteracting) {
+                    batchStyleUpdate(handeyeChatEl, { display: 'none' });
+                }
+            }
+        } else {
+            const handeyeQNotifEl = document.getElementById('handeye-q-notif');
+            const handeyeFNotifEl = document.getElementById('handeye-notif');
+            const handeyeChatEl = document.getElementById('handeye-chat');
+            if (handeyeQNotifEl) batchStyleUpdate(handeyeQNotifEl, { display: 'none' });
+            if (handeyeFNotifEl) batchStyleUpdate(handeyeFNotifEl, { display: 'none' });
+            if (handeyeChatEl && !handeyeModel.isInteracting) {
+                batchStyleUpdate(handeyeChatEl, { display: 'none' });
             }
         }
     }

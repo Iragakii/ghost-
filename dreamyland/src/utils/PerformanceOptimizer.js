@@ -2,11 +2,11 @@ import * as THREE from 'three';
 
 // Distance thresholds for optimizations
 export const DISTANCE_THRESHOLDS = {
-    FREEZE_ANIMATION: 100,    // Freeze animations beyond this distance (increased from 50)
-    DISABLE_SHADOWS: 80,     // Disable shadows beyond this distance (increased from 40)
-    REDUCE_QUALITY_LOW: 30,  // Start reducing quality (low tier) (increased from 10)
-    REDUCE_QUALITY_MED: 60,  // Medium quality reduction (increased from 20)
-    REDUCE_QUALITY_HIGH: 100, // High quality reduction (very low quality) (increased from 50)
+    FREEZE_ANIMATION: 80,     // Freeze animations beyond this distance (more aggressive)
+    DISABLE_SHADOWS: 60,     // Disable shadows beyond this distance (more aggressive for better performance)
+    REDUCE_QUALITY_LOW: 25,  // Start reducing quality (low tier)
+    REDUCE_QUALITY_MED: 50,  // Medium quality reduction
+    REDUCE_QUALITY_HIGH: 80, // High quality reduction (very low quality) - more aggressive
     FOG_START: 30,           // Fog starts becoming noticeable
     FOG_END: 100             // Fog fully obscures objects
 };

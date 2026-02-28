@@ -6,7 +6,7 @@ import { createCactus, updateCactusAnimation } from '../components/Cactus.js';
 import { createIppoac, updateIppoacAnimation } from '../components/Ippoac.js';
 import { createParticles } from '../particles/Particles.js';
 import { createPinwheels } from '../particles/Pinwheels.js';
-import { loadAllCharacters, loadBiarModel, loadBiabModel } from '../characters/CharacterLoader.js';
+import { loadAllCharacters} from '../characters/CharacterLoader.js';
 import { updateCharacterInteractions } from '../characters/CharacterInteractions.js';
 import { initAudio } from '../audio/AudioManager.js';
 import { initInput } from '../input/InputHandler.js';
@@ -53,11 +53,19 @@ const gameState = {
     ippoacIsInteracting: false,
     ippoacChatTimeout: null,
     ippoacAnimationKey: null,
-    ippoacVel: new THREE.Vector3()
+    ippoacVel: new THREE.Vector3(),
+    minescarIsInteracting: false,
+    minescarChatTimeout: null,
+    minescarVideoScreen: null,
+    handeyeIsInteracting: false,
+    handeyeChatTimeout: null,
+    eyeballpModelsDown: false, // Track if eyeballp models are down
+    cactusIsInteracting: false,
+    cactusChatTimeout: null
 };
 
 // Constants
-const SPEED = 40;
+const SPEED =39;
 const SPEED2 = 30;
 const GRAVITY = 30;
 const JUMP = 15;
@@ -133,6 +141,20 @@ export function initGame() {
     } catch (error) {
         console.log('Video screen creation error (video file may not exist):', error);
     }
+ try {
+        videoScreen = createVideoScreen(scene, '/video.mp4', {
+            width: 100,
+            height: 50,
+            position: new THREE.Vector3(196.3, 80, 195), // In front of spawn, facing camera
+            rotation: new THREE.Euler(0, Math.PI , 0), // Rotate 90 degrees to the left
+            distortionIntensity: 0.02,  // Distortion amount (0-1)
+            glitchIntensity: 0.1,       // Glitch effect intensity (0-1)
+            emissiveIntensity: 1.5,     // Screen brightness/glow
+            borderRadius: 1          // Border radius (0-0.5, higher = more rounded)
+        });
+    } catch (error) {
+        console.log('Video screen creation error (video file may not exist):', error);
+    }
 
     // Create video screen behind f.glb model (screen 3)
     let fVideoScreen = null;
@@ -154,7 +176,7 @@ export function initGame() {
     // Create video screen above biar.glb model (videoippo)
     let biarVideoScreen = null;
     try {
-        biarVideoScreen = createVideoScreen(scene, '/public/playground/videoippo.mp4', {
+        biarVideoScreen = createVideoScreen(scene, '/playground/videoippo.mp4', {
             width: 25,
             height: 17,
             position: new THREE.Vector3(10, 25, 150), // Above biar.glb (biar is at x: 10, y: 10, z: 150)
@@ -171,7 +193,7 @@ export function initGame() {
     // Create video screen above biab.glb model (videoape)
     let biabVideoScreen = null;
     try {
-        biabVideoScreen = createVideoScreen(scene, '/public/playground/videoape.mp4', {
+        biabVideoScreen = createVideoScreen(scene, '/playground/videoape.mp4', {
             width: 25,
             height: 17,
             position: new THREE.Vector3(10, 25, 200), // Above biab.glb (biab is at x: 10, y: 10, z: 200)
@@ -185,6 +207,91 @@ export function initGame() {
         console.log('Biab video screen creation error (videoape.mp4 may not exist):', error);
     }
 
+    // Create video screen above biagr.glb model (green)
+    let biagrVideoScreen = null;
+    try {
+        biagrVideoScreen = createVideoScreen(scene, '/pinklocation/green.mp4', {
+            width: 25,
+            height: 17,
+            position: new THREE.Vector3(30, 25, 175), // Above biagr.glb (biagr is at x: 20, y: 10, z: 175)
+            rotation: new THREE.Euler(0, -Math.PI / 2, 0), // Face forward (same as biar/biab)
+            distortionIntensity: 0.02,
+            glitchIntensity: 0.1,
+            emissiveIntensity: 1.5,
+            borderRadius: 0.08
+        });
+    } catch (error) {
+        console.log('Biagr video screen creation error (green.mp4 may not exist):', error);
+    }
+
+    // Create video screen next to tomato.glb model (leaf1)
+    let leaf1VideoScreen = null;
+    try {
+        leaf1VideoScreen = createVideoScreen(scene, '/pinklocation/leaf1.mp4', {
+            width: 15,
+            height: 8,
+            position: new THREE.Vector3(196.3, 25, 127), // To the left of tomato (tomato is at x: 200, y: 25, z: 130)
+            rotation: new THREE.Euler(0, -Math.PI , 0), // Same rotation as tomato
+            distortionIntensity: 0.02,
+            glitchIntensity: 0.1,
+            emissiveIntensity: 1.5,
+            borderRadius: 1
+        });
+    } catch (error) {
+        console.log('Leaf1 video screen creation error (leaf1.mp4 may not exist):', error);
+    }
+
+    // Create video screen next to tomato.glb model (leaf2)
+    let leaf2VideoScreen = null;
+    try {
+        leaf2VideoScreen = createVideoScreen(scene, '/pinklocation/leaf2.mp4', {
+            width: 15,
+            height: 10,
+            position: new THREE.Vector3(208.1, 20, 127), // To the right of tomato (tomato is at x: 200, y: 25, z: 130)
+            rotation: new THREE.Euler(0, Math.PI, 0), // Same rotation as tomato
+            distortionIntensity: 0.02,
+            glitchIntensity: 0.1,
+            emissiveIntensity: 1.5,
+            borderRadius: 1
+        });
+    } catch (error) {
+        console.log('Leaf2 video screen creation error (leaf2.mp4 may not exist):', error);
+    }
+
+    // Create video screen next to blueto.glb model (bg)
+    let bgVideoScreen = null;
+    try {
+        bgVideoScreen = createVideoScreen(scene, '/pinklocation/bga.mp4', {
+            width: 20,
+            height: 8,
+            position: new THREE.Vector3(190, 19, 300), // To the left of blueto (blueto is at x: 190, y: 23, z: 290)
+            rotation: new THREE.Euler(0, Math.PI / 2, 0), // Same rotation as blueto
+            distortionIntensity: 0.02,
+            glitchIntensity: 0.1,
+            emissiveIntensity: 1.5,
+            borderRadius: 1
+        });
+    } catch (error) {
+        console.log('Bg video screen creation error (bg.mp4 may not exist):', error);
+    }
+
+    // Create video screen next to blueto.glb model (pga)
+    let pgaVideoScreen = null;
+    try {
+        pgaVideoScreen = createVideoScreen(scene, '/pinklocation/pga.mp4', {
+            width: 23,
+            height: 10,
+            position: new THREE.Vector3(190, 23, 284), // To the right of blueto (blueto is at x: 190, y: 23, z: 290)
+            rotation: new THREE.Euler(0, Math.PI / 2, 0), // Same rotation as blueto
+            distortionIntensity: 0.02,
+            glitchIntensity: 0.1,
+            emissiveIntensity: 1.5,
+            borderRadius: 1
+        });
+    } catch (error) {
+        console.log('Pga video screen creation error (pga.mp4 may not exist):', error);
+    }
+
     // Store characterModels in gameState so AudioManager can access it
     gameState.characterModels = characterModels;
     
@@ -192,7 +299,7 @@ export function initGame() {
     audioData = initAudio(gameState);
     
     // Initialize input
-    initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, characterModels, characterTimeouts, newCharacterGroup, audioData);
+    initInput(gameState, luvuGroup, cactusGroup, ippoacGroup, characterModels, characterTimeouts, newCharacterGroup, audioData, scene);
 
     // Load characters
     loadAllCharacters(scene, characterModels, characterTimeouts, gameState, audioData).then(group => {
@@ -200,9 +307,7 @@ export function initGame() {
     });
 
     // Load biar.glb and biab.glb models at spawn location next to cactus
-    loadBiarModel(scene);
-    loadBiabModel(scene);
-
+ 
     // Fallback: Force complete loading after 10 seconds if LoadingManager doesn't fire
     // This ensures the game starts even if some assets fail to load
     // The loading screen will ensure minimum 4s + actual loading time before hiding
@@ -292,25 +397,75 @@ export function initGame() {
         // Update luvu
         updateLuvu(delta, time, camAngle, getTerrainY, gameState, particles, luvuGroup, cactusGroup, audioData);
         
-        // Update particles
-        particles.update(delta, time);
-        pinwheels.update(delta, time);
+        // Update particles (every 2 frames for better performance)
+        if (gameState.terrainUpdateFrame % 2 === 0) {
+            particles.update(delta, time);
+            pinwheels.update(delta, time);
+        }
 
-        // Update video screen shader (only if not skipped for performance)
-        if (videoScreen && !videoScreen.skipUpdate) {
-            videoScreen.update(time);
+        // Update eyeballp rotation animation (smooth left-right oscillation)
+        for (let i = 0; i < characterModels.length; i++) {
+            const char = characterModels[i];
+            if (char && char.isEyeballp && char.group && char.baseRotationY !== undefined) {
+                // Oscillate between baseRotationY - 10 and baseRotationY + 10
+                // 20 second cycle (10 seconds each direction)
+                const oscillationRange = 1; // ±10 degrees/units
+                const cycleDuration = 20; // 20 seconds for full cycle
+                const oscillation = Math.sin((time * 2 * Math.PI) / cycleDuration) * oscillationRange;
+                char.group.rotation.y = char.baseRotationY + oscillation;
+                
+                // Smooth Y position animation (down/up)
+                if (char.originalY !== undefined && char.targetY !== undefined) {
+                    // Smoothly interpolate to target Y position
+                    const lerpSpeed = 3.0; // Speed of interpolation
+                    const currentY = char.group.position.y;
+                    const newY = currentY + (char.targetY - currentY) * lerpSpeed * delta;
+                    char.group.position.y = newY;
+                }
+            }
         }
-        // Update f video screen shader (screen 3)
-        if (fVideoScreen && !fVideoScreen.skipUpdate) {
-            fVideoScreen.update(time);
-        }
-        // Update biar video screen shader
-        if (biarVideoScreen && !biarVideoScreen.skipUpdate) {
-            biarVideoScreen.update(time);
-        }
-        // Update biab video screen shader
-        if (biabVideoScreen && !biabVideoScreen.skipUpdate) {
-            biabVideoScreen.update(time);
+
+        // Update video screen shader (only if not skipped for performance, and every 2 frames)
+        if (gameState.terrainUpdateFrame % 2 === 0) {
+            if (videoScreen && !videoScreen.skipUpdate) {
+                videoScreen.update(time);
+            }
+            // Update f video screen shader (screen 3)
+            if (fVideoScreen && !fVideoScreen.skipUpdate) {
+                fVideoScreen.update(time);
+            }
+            // Update biar video screen shader
+            if (biarVideoScreen && !biarVideoScreen.skipUpdate) {
+                biarVideoScreen.update(time);
+            }
+            // Update biab video screen shader
+            if (biabVideoScreen && !biabVideoScreen.skipUpdate) {
+                biabVideoScreen.update(time);
+            }
+            // Update biagr video screen shader
+            if (biagrVideoScreen && !biagrVideoScreen.skipUpdate) {
+                biagrVideoScreen.update(time);
+            }
+            // Update leaf1 video screen shader
+            if (leaf1VideoScreen && !leaf1VideoScreen.skipUpdate) {
+                leaf1VideoScreen.update(time);
+            }
+            // Update leaf2 video screen shader
+            if (leaf2VideoScreen && !leaf2VideoScreen.skipUpdate) {
+                leaf2VideoScreen.update(time);
+            }
+            // Update bg video screen shader
+            if (bgVideoScreen && !bgVideoScreen.skipUpdate) {
+                bgVideoScreen.update(time);
+            }
+            // Update pga video screen shader
+            if (pgaVideoScreen && !pgaVideoScreen.skipUpdate) {
+                pgaVideoScreen.update(time);
+            }
+            // Update minescar video screen shader
+            if (gameState.minescarVideoScreen && !gameState.minescarVideoScreen.skipUpdate) {
+                gameState.minescarVideoScreen.update(time);
+            }
         }
 
         // Update camera position
@@ -362,6 +517,11 @@ export function initGame() {
         if (fVideoScreen) optimizeVideoScreen(fVideoScreen);
         if (biarVideoScreen) optimizeVideoScreen(biarVideoScreen);
         if (biabVideoScreen) optimizeVideoScreen(biabVideoScreen);
+        if (biagrVideoScreen) optimizeVideoScreen(biagrVideoScreen);
+        if (leaf1VideoScreen) optimizeVideoScreen(leaf1VideoScreen);
+        if (leaf2VideoScreen) optimizeVideoScreen(leaf2VideoScreen);
+        if (bgVideoScreen) optimizeVideoScreen(bgVideoScreen);
+        if (pgaVideoScreen) optimizeVideoScreen(pgaVideoScreen);
 
         // Frustum culling - hide objects outside camera view (every 2 frames)
         // This prevents FPS drops when rotating camera and many objects come into view
