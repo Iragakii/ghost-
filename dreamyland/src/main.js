@@ -75,6 +75,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 navigateToWork();
             } else if (button.id === 'nav-explore') {
                 navigateToExplore();
+            } else if (button.id === 'nav-about') {
+                navigateToAbout();
             }
         });
     });
@@ -84,14 +86,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const path = window.location.pathname;
         if (path === '/work') {
             showWorkPage();
+        } else if (path === '/about') {
+            showAboutPage();
         } else {
             showExplorePage();
         }
     });
     
     // Check initial route
-    if (window.location.pathname === '/work') {
+    const initialPath = window.location.pathname;
+    if (initialPath === '/work') {
         showWorkPage();
+    } else if (initialPath === '/about') {
+        showAboutPage();
     }
     
     // Setup work page button handlers
@@ -161,7 +168,7 @@ function updateVisitButtonRotation() {
         // Convert rotation to degrees and apply to container
         const rotationDeg = (rotation * 180 / Math.PI);
         // Apply subtle rotation to match camera movement (30% of camera rotation)
-        visitContainer.style.transform = `translateY(-50%) )`;
+        visitContainer.style.transform = `translateY(-50%) rotate(${rotationDeg * 0.3}deg)`;
     }
 }
 
@@ -275,6 +282,12 @@ function showExplorePage() {
         visitContainer.style.display = 'none';
     }
     
+    // Hide about container
+    const aboutContainer = document.getElementById('about-container');
+    if (aboutContainer) {
+        aboutContainer.style.display = 'none';
+    }
+    
     // Restore original video.mp4 (screen stays at original position)
     if (videoScreen && videoScreen.video && originalVideoSrc && videoScreen.material) {
         // Remove image texture if it exists
@@ -298,6 +311,96 @@ function showExplorePage() {
     
     // Restore camera
     restoreCameraFromWork();
+}
+
+function showAboutPage() {
+    currentRoute = '/about';
+    const workNav = document.getElementById('work-nav');
+    if (workNav) {
+        workNav.style.display = 'none';
+    }
+    
+    // Hide visit container
+    const visitContainer = document.getElementById('work-visit-container');
+    if (visitContainer) {
+        visitContainer.style.display = 'none';
+    }
+    
+    // Show about container
+    const aboutContainer = document.getElementById('about-container');
+    if (aboutContainer) {
+        aboutContainer.style.display = 'block';
+        aboutContainer.style.position = 'fixed';
+        aboutContainer.style.top = '0';
+        aboutContainer.style.left = '0';
+        aboutContainer.style.width = '100%';
+        aboutContainer.style.height = '100%';
+        aboutContainer.style.zIndex = '1000';
+        aboutContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.94)';
+    }
+    
+    // Initialize About page React component if not already initialized
+    if (!window.aboutInitialized) {
+        initializeAboutPage();
+        window.aboutInitialized = true;
+    }
+}
+
+async function initializeAboutPage() {
+    // Try to load and render React About component
+    // This will work if React is set up in the project
+    const aboutContainer = document.getElementById('about-container');
+    if (!aboutContainer) return;
+    
+    // Try to dynamically import React and AboutUI
+    // Using try-catch to handle import errors gracefully
+    try {
+        // Check if React is available first
+        const ReactModule = await import('react').catch(() => null);
+        const ReactDOMModule = await import('react-dom/client').catch(() => null);
+        
+        if (!ReactModule || !ReactDOMModule) {
+            throw new Error('React is not available');
+        }
+        
+        // Try to import AboutUI - use a more permissive import
+        let AboutUIModule;
+        try {
+            AboutUIModule = await import('../About/AboutUI.js');
+        } catch (e) {
+            // Try without extension
+            try {
+                AboutUIModule = await import('../About/AboutUI');
+            } catch (e2) {
+                throw new Error('Could not load AboutUI component');
+            }
+        }
+        
+        const React = ReactModule.default || ReactModule;
+        const { createRoot } = ReactDOMModule;
+        const AboutUI = AboutUIModule.default;
+        
+        const root = createRoot(aboutContainer);
+        root.render(React.createElement(AboutUI));
+    } catch (error) {
+        console.log('Could not load AboutUI component, using fallback:', error);
+        showAboutFallback();
+    }
+}
+
+function showAboutFallback() {
+    const aboutContainer = document.getElementById('about-container');
+    if (aboutContainer) {
+        aboutContainer.innerHTML = `
+            <div style="color: #EDF492; padding: 50px; text-align: center; font-family: monospace; height: 100%; display: flex; align-items: center; justify-content: center;">
+                <div>
+                    <h1 style="color: #A8DF65; font-size: 32px; margin-bottom: 20px;">ABOUT</h1>
+                    <p style="font-size: 18px; line-height: 1.6;">Creative Development & Experience Designer</p>
+                    <p style="font-size: 16px; margin-top: 20px; color: #EDF492;">RAISED ON '90s CLASSIC</p>
+                </div>
+            </div>
+        `;
+    }
 }
 
 function showWorkContent(type) {
