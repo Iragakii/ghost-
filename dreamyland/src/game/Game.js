@@ -1501,6 +1501,21 @@ function updateLuvu(delta, time, camAngle, getTerrainY, state, particles, luvuGr
 }
 
 function updateCamera(delta, state, pinkLight, blueLight) {
+    // If in work mode, use work camera position with rotation
+    if (isInWorkMode && workCameraPosition && workCameraTarget) {
+        // Rotate camera around the target point
+        const radius = 90; // Distance from target
+        const angle = workCameraRotationY;
+        const x = workCameraTarget.x + radius * Math.cos(angle);
+        const z = workCameraTarget.z + radius * Math.sin(angle);
+        const y = workCameraPosition.y;
+        
+        const rotatedPosition = new THREE.Vector3(x, y, z);
+        camera.position.lerp(rotatedPosition, 5 * delta);
+        camera.lookAt(workCameraTarget);
+        return;
+    }
+    
     // Choose target group based on follow state
     let targetGroup = luvuGroup;
     if (state.isFollowingIppoac) {
@@ -1564,6 +1579,44 @@ function lerpAngle(a, b, t) {
     return a + d * t;
 }
 
+// Camera state for work page
+let isInWorkMode = false;
+let workCameraTarget = null;
+let workCameraPosition = null;
+let workCameraRotationY = 0; // Rotation angle for work camera
+
+// Function to move camera to work position
+export function moveCameraToWork() {
+    isInWorkMode = true;
+    // Camera at (200, 35, 0) looking at video screen at (290, 27, 0)
+    workCameraPosition = new THREE.Vector3(200, 35, 0);
+    // Look at the video screen position (290, 27, 0) - original position
+    workCameraTarget = new THREE.Vector3(290, 27, 0);
+    // Reset rotation angle
+    workCameraRotationY = Math.atan2(workCameraPosition.z - workCameraTarget.z, workCameraPosition.x - workCameraTarget.x);
+}
+
+// Function to update work camera rotation
+export function updateWorkCameraRotation(deltaX) {
+    if (isInWorkMode) {
+        // Slow rotation speed
+        const rotationSpeed = 0.002;
+        workCameraRotationY += deltaX * rotationSpeed;
+    }
+}
+
+// Function to get work camera rotation
+export function getWorkCameraRotation() {
+    return workCameraRotationY;
+}
+
+// Function to restore camera to character follow
+export function restoreCameraFromWork() {
+    isInWorkMode = false;
+    workCameraPosition = null;
+    workCameraTarget = null;
+}
+
 // Export game state for other modules
-export { gameState, characterModels, characterTimeouts, newCharacterGroup, luvuGroup };
+export { gameState, characterModels, characterTimeouts, newCharacterGroup, luvuGroup, videoScreen, camera, scene };
 

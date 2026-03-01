@@ -236,6 +236,65 @@ export function createVideoScreen(scene, videoPath = '/mojito.mp4', options = {}
         }
     };
 
+    // Function to change video source (with optional preloaded video)
+    const changeVideoSource = (newVideoPath, preloadedVideoElement = null) => {
+        video.pause();
+        
+        // If we have a preloaded video element, use it instead
+        if (preloadedVideoElement && preloadedVideoElement.readyState >= 3) {
+            // Preloaded video is ready, swap the src
+            video.src = preloadedVideoElement.src;
+            video.currentTime = preloadedVideoElement.currentTime || 0;
+            video.load();
+            // Try to play immediately since it's preloaded
+            video.play().catch(err => {
+                console.log('Video autoplay blocked:', err);
+            });
+        } else {
+            // Fallback: load normally
+            video.src = newVideoPath;
+            video.load();
+            video.play().catch(err => {
+                console.log('Video autoplay blocked:', err);
+            });
+        }
+    };
+
+    // Function to set image texture
+    const setImageTexture = (imagePath) => {
+        const loader = new THREE.TextureLoader();
+        loader.load(imagePath, (texture) => {
+            texture.colorSpace = THREE.SRGBColorSpace;
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            texture.generateMipmaps = false;
+            if (shaderMaterial.uniforms && shaderMaterial.uniforms.uTexture) {
+                // Dispose old texture if it's not the video texture
+                const oldTexture = shaderMaterial.uniforms.uTexture.value;
+                if (oldTexture !== videoTexture && oldTexture.dispose) {
+                    oldTexture.dispose();
+                }
+                shaderMaterial.uniforms.uTexture.value = texture;
+            }
+        }, undefined, (error) => {
+            console.error('Error loading image:', error);
+        });
+    };
+
+    // Function to restore video texture
+    const restoreVideoTexture = () => {
+        if (shaderMaterial.uniforms && shaderMaterial.uniforms.uTexture) {
+            const oldTexture = shaderMaterial.uniforms.uTexture.value;
+            if (oldTexture !== videoTexture && oldTexture.dispose) {
+                oldTexture.dispose();
+            }
+            shaderMaterial.uniforms.uTexture.value = videoTexture;
+            video.play().catch(err => {
+                console.log('Video autoplay blocked:', err);
+            });
+        }
+    };
+
     return {
         screenMesh,
         video,
@@ -252,7 +311,12 @@ export function createVideoScreen(scene, videoPath = '/mojito.mp4', options = {}
             if (shaderMaterial.uniforms) {
                 shaderMaterial.uniforms.uGlitchIntensity.value = intensity;
             }
-        }
+        },
+        changeVideoSource,
+        setImageTexture,
+        restoreVideoTexture,
+        material: shaderMaterial,
+        videoTexture
     };
 }
 
